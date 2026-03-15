@@ -1,4 +1,4 @@
-# Volumetric cloud :) (WIP)
+# MFA_Engine_V2.0.0 :) (WIP)
 
 **This project goal is to do some simple volumetric cloud rendering**
 
@@ -9,7 +9,7 @@
 ## 📂 Project Structure
 
 - `engine/` — Core rendering engine and Vulkan abstractions.
-- `executables/volumetric_sphere/` — The main implementation is inside this folder.
+- `executables/` — Samples are inside this folder.
 - `shared/` — Common utilities and shared components.
 - `assets/` — Fonts, images, shaders, and other media assets.
 - `submodules/` — External dependencies (e.g., Eigen).

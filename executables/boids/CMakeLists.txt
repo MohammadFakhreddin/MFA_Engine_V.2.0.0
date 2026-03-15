@@ -1,12 +1,12 @@
 ########################################
 
-set(EXECUTABLE "VolumetricSphereApp")
+set(EXECUTABLE "BoidsApp")
 
 list(
     APPEND EXECUTABLE_RESOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/VolumetricSphereMain.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/VolumetricSphereApp.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/VolumetricSphereApp.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsAppMain.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsApp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsApp.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})

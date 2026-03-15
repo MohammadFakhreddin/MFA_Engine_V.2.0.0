@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION VERSION 3.16.0)
 
-project ("VolumetricCloud" C CXX)
+project ("MFA_Engine_V.2.0.0" C CXX)
 
 set_property (GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -30,8 +30,8 @@ endif()
 if(MSVC)
     add_definitions (-D_CRT_SECURE_NO_WARNINGS)
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /GL")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
+#    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")`
+#    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 endif()
 
 message(STATUS "Build type is ${CMAKE_BUILD_TYPE}")
@@ -170,6 +170,13 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/webview")
 include_directories("${CMAKE_SOURCE_DIR}/webview")
 
 ##########################################################
+
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/executables/empty_app")
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/executables/boids")
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/executables/perlin_noise")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/volumetric_sphere")
 

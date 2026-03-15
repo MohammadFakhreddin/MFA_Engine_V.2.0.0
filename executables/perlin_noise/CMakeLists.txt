@@ -1,12 +1,12 @@
 ########################################
 
-set(EXECUTABLE "VolumetricSphereApp")
+set(EXECUTABLE "PerlinNoiseApp")
 
 list(
     APPEND EXECUTABLE_RESOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/VolumetricSphereMain.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/VolumetricSphereApp.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/VolumetricSphereApp.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PerlinNoiseMain.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PerlinNoiseApp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PerlinNoiseApp.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})
