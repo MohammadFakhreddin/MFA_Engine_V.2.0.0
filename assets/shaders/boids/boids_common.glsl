@@ -36,11 +36,10 @@ struct SimulationConstants
     float softCollisionOffset;
     float hardCollisionOffset;
     float strictCollisionOffset;
-    float softCollisionRadius;
 
-    bool enableSubMarineSeparationForce;
-    bool enableSubMarineAlignmentForce;
-    bool enableSubMarineCohesionForce;
+    int bEnableSubMarineSeparationForce;
+    int bEnableSubMarineAlignmentForce;
+    int bEnableSubMarineCohesionForce;
 
     float subMarineSpeed;
     float subMarineSeparationRadius;
