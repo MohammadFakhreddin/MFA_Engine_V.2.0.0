@@ -1,15 +1,14 @@
-// Stages are:
-// 0 = Update neighbourhood forces
-// 1 = Update softcollision forces
-// 2 = Update velocity using forces
-// 3 = Update position using forces
-// 4 = Handle hard collision (In case soft collision have failed) (Boundary + Interiors)
-// 5 = Update transform
-
 #include "../math_common.glsl"
 #include "boids_common.glsl"
 
 #define MAX_N_COUNT 5
+
+#define FLAG_ENABLE_UPDATE       (1u << 0); // bit 0
+#define FLAG_ENABLE_FIXED_UPDATE (1u << 1); // bit 1
+#define FLAG_ENABLE_RENDER       (1u << 2); // bit 2
+#define FLAG_DEBUG_MODE          (1u << 3); // bit 3
+
+#define myFish fishes[myIndex]
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
@@ -30,8 +29,9 @@ layout(set = 2, binding = 0, std140) uniform SimulationConstantsBuffer
 };
 
 layout(push_constant, std430) uniform PushConstants {
-    uint stage;
-    float fixedDt;// Fixed delta time
+    float dt;           // Used to update visuals
+    float fixedDt;      // Used to update physics
+    uint stateMask;
 };
 
 //-------------------------------------------------------------------------------------------------
@@ -56,33 +56,28 @@ vec3 CohesionForce(vec3 posVec)
 
 void UpdateNeighborhoodForces(uint myIndex)
 {
-    Neighbours neighbours = QueryForNeighbours(myIndex, maximumRadius);
-
     vec3 force = vec3(0.0);
 
-    Fish myFish = fishes[myIdx];
-    vec3 myPosition = myFish.position;
-    vec3 myVelocity = myFish.velocity;
+    vec3 myPosition = myFish.rbPosition;
+    vec3 myVelocity = myFish.rbVelocity;
 
     float maximumRadius = max(simulation.separationRadius, max(simulation.alignmentRadius, simulation.cohesionRadius));
     float maximumRadius2 = maximumRadius * maximumRadius;
     // TODO: Query from acceleration structure instead
-    for (uint otherIdx = 0; otherIdx < fishes.length(); ++otherIdx)
+    for (uint otherIndex = 0; otherIndex < fishes.length(); ++otherIndex)
     {
-        uint otherIdx = neighbours.indices[i];
+        if (otherIndex == myIndex) continue;
 
-        if (otherIdx == myIdx) continue;
+        Fish otherFish = fishes[otherIndex];
 
-        Fish otherFish = fishes[otherIdx];
-
-        vec3 otherPosition = otherFish.position;
+        vec3 otherPosition = otherFish.rbPosition;
 
         vec3 posVec = otherPosition - myPosition;
         float distance2 = dot(posVec, posVec);
 
         if (distance2 <= 1e-8 || distance2 > maximumRadius2) continue;
 
-        vec3 otherVelocity = otherFish.velocity;
+        vec3 otherVelocity = otherFish.rbVelocity;
 
         float distance = sqrt(distance2);
         vec3 posDir = posVec / distance;
@@ -111,15 +106,15 @@ void UpdateNeighborhoodForces(uint myIndex)
 
     // TODO: Submarine forces
 
-    myFish.force = force;
+    myFish.rbForce = force;
 }
 
 //-------------------------------------------------------------------------------------------------
 
-vec3 ComputeVelocity(uint index)
+vec3 CalculateVelocity(uint myIndex)
 {
-    vec3 velocity = fishes[index].velocity;
-    vec3 force = fishes[index].force;
+    vec3 velocity = myFish.rbVelocity;
+    vec3 force = myFish.rbForce;
 
     if (simulation.bClampAcc != 0)
     {
@@ -166,18 +161,16 @@ bool IsInsideTriangle(uint triangleIndex, vec3 point, float offset)
 
 //-------------------------------------------------------------------------------------------------
 
-void HandleSoftCollision(uint myIndex)
+void UpdateSoftCollision(uint myIndex)
 {
-    Fish myFish = fishes[myIndex];
-
-    vec3 position = myFish.position;
+    vec3 position = myFish.rbPosition;
 
     // TODO: Instead we have to use the acceleration structure.
     for (uint triIdx = 0u; triIdx < uint(triangles.length()); ++triIdx)
     {
         CollisionTriangle tri = triangles[triIdx];
 
-        vec3 velocity = ComputeVelocity(myIndex);
+        vec3 velocity = CalculateVelocity(myIndex);
 
         vec3 n = tri.normal;
         vec3 q = tri.v0 + (n * simulation.softCollisionOffset);
@@ -196,7 +189,7 @@ void HandleSoftCollision(uint myIndex)
 
         vec3 colPos = position + velocity * t;
 
-        if (!IsInsideTriangle(tri, colPos, simulation.softCollisionOffset)) continue;
+        if (!IsInsideTriangle(triIdx, colPos, simulation.softCollisionOffset)) continue;
 
         vec3 orthVel = dotNV * n;
         vec3 paraVel = velocity - orthVel;
@@ -224,45 +217,170 @@ void HandleSoftCollision(uint myIndex)
         }
 
         vec3 acceleration = (velMag * paraVecDir - velocity) / t;
-        fishes[myIndex].force += acceleration;
+        myFish.rbForce += acceleration;
     }
+}
+
+//-------------------------------------------------------------------------------------------------
+
+vec3 ComputeVelocity(uint myIndex)
+{
+    vec3 velocity = myFish.rbVelocity;
+    vec3 force = myFish.rbForce;
+
+    if (simulation.bClampAcc != 0)
+    {
+        float forceMag = length(force);
+        vec3 forceDir = forceMag > 0.0 ? (force / forceMag) : vec3(0.0);
+        forceMag = clamp(forceMag, simulation.minAcc, simulation.maxAcc);
+        force = forceDir * forceMag;
+    }
+
+    velocity = velocity + fixedDt * force;
+
+    float speed = length(velocity);
+    vec3 velDir = speed > 0.0 ? (velocity / speed) : vec3(0.0);
+
+    if (simulation.bClampSpeed != 0)
+    {
+        if (simulation.minSpeed > simulation.maxSpeed)
+        {
+            speed = simulation.maxSpeed;
+        }
+        else
+        {
+            speed = clamp(speed, simulation.minSpeed, simulation.maxSpeed);
+        }
+    }
+
+    return velDir * speed;
+}
+
+//-------------------------------------------------------------------------------------------------
+
+void UpdatePosition(uint myIndex)
+{
+    myFish.rbVelocity = ComputeVelocity(myIndex);
+    myFish.rbPosition += fixedDt * myFish.rbVelocity;
+}
+
+//-------------------------------------------------------------------------------------------------
+
+// Hard collision is a failsafe when soft collision fails to deter fishes from passing through wall.
+void UpdateHardCollision(uint myIndex)
+{
+    vec3 q0 = myFish.rbPosition - myFish.rbVelocity * fixedDt;    // Previous position
+    vec3 q1 = myFish.rbPosition;                                           // Current position
+    vec3 rbVelocity = myFish.rbVelocity;
+
+    for (uint triIdx = 0u; triIdx < uint(triangles.length()); ++triIdx)
+    {
+        CollisionTriangle tri = triangles[triIdx];
+
+        vec3 n = tri.normal;
+        vec3 p = tri.v0 + n * simulation.hardCollisionOffset;
+
+        vec3 d = q1 - q0;
+        
+        float denom = dot(n, d);
+        float t = -dot(q0, n)/denom;
+
+        if (t < 0 || t > 1)
+        {
+            continue;
+        }
+
+        // Collision point along movement direction.
+        vec3 qt = q0 + t * d;
+
+        if (!IsInsideTriangle(triIdx, qt, simulation.hardCollisionOffset))
+        {
+            continue;
+        }
+
+        velocity = reflect(velocity, n);
+
+        q1 = qt;
+    }
+
+    myFish.rbPosition = q1;
+    myFish.rbVelocity = rbVelocity;
+}
+
+//-------------------------------------------------------------------------------------------------
+
+void UpdateTransform(uint myIndex)
+{
+    vec3 targetPos = myFish.rbPosition;
+    float followSpeed = 6.0;                  // bigger = snappier
+    float alpha = 1.0 - exp(-followSpeed * dt);
+
+    myFish.tPosition = mix(myFish.tPosition, targetPos, alpha);
+
+    float speed = length(myFish.rbVelocity);
+    if (speed > EPSILON)
+    {
+        float rotationSpeed = 10.0;
+        vec3 tangent = myFish.rbVelocity / speed;
+
+        vec3 referenceUp = abs(dot(UP_VEC3, tangent)) < 1.0 - EPSILON
+            ? UP_VEC3
+            : RIGHT_VEC3;
+
+        vec3 biTangent = normalize(cross(referenceUp, tangent));
+        vec3 normal = normalize(cross(tangent, biTangent));
+
+        vec4 targetRotation = Math_QuatFromMat3(mat3(
+            biTangent,
+            normal,
+            tangent
+        ));
+
+        if (dot(myFish.tRotation, myFish.tRotation) > EPSILON)
+        {
+            myFish.tRotation = Math_RotateTowards(
+                myFish.tRotation,
+                targetRotation,
+                rotationSpeed * dt
+            );
+        }
+        else
+        {
+            myFish.tRotation = targetRotation;
+        }
+    }
+
+    myFish.tGlobalMat4 =
+        Math_TranslateToMat4(myFish.tPosition) *
+        Math_QuatToMat4(myFish.tRotation) *
+        Math_ScaleToMat4(myFish.tScale) *
+        myFish.tLocalMat4;
 }
 
 //-------------------------------------------------------------------------------------------------
 
 void main() {
 
+    // TODO: We have to update position using a higher frequency, physics check can use a lower frequency.
     uint index = gl_GlobalInvocationID.x;
     if (index > fishes.length()) return;
+
+    bool enableUpdate = ((stateMask & FLAG_ENABLE_UPDATE) > 0u);
+    bool enableFixedUpdate = ((stateMask & FLAG_ENABLE_FIXED_UPDATE) > 0u);
+
     // TODO: Start from here. Update
-    if (stage == 0)// Update neighbourhood forces
+    if (enableFixedUpdate == 1)
     {
         UpdateNeighborhoodForces(index);
-    }
-    else if (stage == 1)// Update softcollision forces
-    {
-        HandleSoftCollision(index);
-    }
-    else if (stage == 2)// Update velocity using forces
-    {
-
-    }
-    else if (stage == 3)// Update position using forces
-    {
-
-    }
-    else if (stage == 4)// Handle hard collision (In case soft collision have failed) (Boundary + Interiors)
-    {
-
-    }
-    else if (stage == 5)// Update transforms for rendering
-    {
-
-    }
-    else // Unknown value. Error!
-    {
-        return;
+        UpdateSoftCollision(index);
+        UpdatePosition(index);
+        UpdateHardCollision(index);
     }
 
-    //    uint triangleCount = uint(triangles.length());
+    if (enableUpdate == 1)// Update transforms for rendering
+    {
+        UpdateTransform(index);
+    }
 }
+
+//-------------------------------------------------------------------------------------------------

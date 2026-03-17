@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RenderBackend.hpp"
 #include "RenderTypes.hpp"
+#include "BedrockMemory.hpp"
 
 namespace MFA
 {
@@ -20,7 +20,7 @@ namespace MFA
         [[nodiscard]]
         uint8_t * Data();
 
-        RT::BufferGroup const & HostVisibleBuffer();
+        RT::BufferGroup const & HostVisibleBuffer() const;
 
     private:
 

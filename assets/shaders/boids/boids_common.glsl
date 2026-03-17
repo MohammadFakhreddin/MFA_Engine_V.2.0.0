@@ -66,20 +66,25 @@ struct Fish
 {
     int id;                         // Fish unique index, starts from 0
 
-    vec3 position;
+    vec3 rbPosition;
 
-    vec3 velocity;
+    vec3 rbVelocity;
     int placeholder0;
 
-    vec3 force;
+    vec3 rbForce;
     int placeholder1;
 
-    vec3 scale;
+    vec3 tPosition;
     int placeholder2;
 
-    mat4 localTransform;            // The default transform used to adjust the mesh
+    vec4 tRotation;                 // Used for animation
 
-    vec4 previousRotatonQuat;       // Used for animation
+    vec3 tScale;
+    int placeholder3;
+
+    mat4 tLocalMat4;                // The default transform used to adjust the mesh
+
+    mat4 tGlobalMat4;               // The global transform used for rendering
 };
 
 struct CollisionTriangle

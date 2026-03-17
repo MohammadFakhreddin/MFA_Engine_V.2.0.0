@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <initializer_list>
 #include <stdint.h>
 #include <cstring>
 #include <memory>

@@ -66,6 +66,13 @@ namespace MFA
 
     //-----------------------------------------------------------------------------------------------
 
+    RT::BufferGroup const & HostVisibleBufferTracker::HostVisibleBuffer() const
+    {
+        return *mBufferGroup;
+    }
+
+    //-----------------------------------------------------------------------------------------------
+
     LocalBufferTracker::LocalBufferTracker(
         std::shared_ptr<RT::BufferGroup> localBuffer,
         std::shared_ptr<RT::BufferGroup> hostVisibleBuffer,
