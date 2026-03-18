@@ -3,17 +3,23 @@
 //
 
 #include "BoidsApp.hpp"
+
+#include "BedrockMath.hpp"
 #include "BedrockPath.hpp"
-#include "Buffers.hpp"
+#include "BlinnPhongPipeline.hpp"
+#include "BoidsFish.hpp"
 #include "LogicalDevice.hpp"
 
 #include <filesystem>
+#include <glm/gtc/quaternion.hpp>
+#include <memory>
+#include <vector>
 
 using namespace MFA;
 
 //======================================================================================================================
 
-EmptyApp::EmptyApp()
+BoidsSimulationApp::BoidsSimulationApp()
 {
     if (SDL_JoystickOpen(0) != nullptr)
         SDL_JoystickEventState(SDL_ENABLE);
@@ -27,39 +33,191 @@ EmptyApp::EmptyApp()
 
     _sampler = RB::CreateSampler(LogicalDevice::GetVkDevice(), RB::CreateSamplerParams{});
 
-    _ui = std::make_shared<UI>(_displayRenderPass,
-                               UI::Params{.lightMode = false,
-                                          .fontCallback = [this](ImGuiIO &io) -> void
-                                          {
-                                              { // Default font
-                                                  auto const fontPath =
-                                                      Path::Get("fonts/JetBrains-Mono/JetBrainsMonoNL-Regular.ttf");
-                                                  MFA_ASSERT(std::filesystem::exists(fontPath));
-                                                  _defaultFont = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 20.0f);
-                                                  MFA_ASSERT(_defaultFont != nullptr);
-                                              }
-                                              { // Bold font
-                                                  auto const fontPath =
-                                                      Path::Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf");
-                                                  MFA_ASSERT(std::filesystem::exists(fontPath));
-                                                  _boldFont = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 20.0f);
-                                                  MFA_ASSERT(_boldFont != nullptr);
-                                              }
-                                          }});
-    _ui->UpdateSignal.Register([this]() -> void { OnUI(Time::DeltaTimeSec()); });
+    PrepareUI();
 
     LogicalDevice::ResizeEventSignal2.Register([this]() -> void { Resize(); });
 
     PrepareSceneRenderPass();
+
+    PrepareCamera();
+    PrepareFishStorageBuffer();
 }
 
 //======================================================================================================================
 
-EmptyApp::~EmptyApp() = default;
+BoidsSimulationApp::~BoidsSimulationApp() = default;
 
 //======================================================================================================================
 
-void EmptyApp::Run()
+void BoidsSimulationApp::PrepareUI()
+{
+    _ui = std::make_shared<UI>(
+        _displayRenderPass,
+        UI::Params{
+            .lightMode = false,
+            .fontCallback = [this](ImGuiIO &io) -> void
+            {
+                { // Default font
+                    auto const fontPath =
+                        Path::Get("fonts/JetBrains-Mono/JetBrainsMonoNL-Regular.ttf");
+                    MFA_ASSERT(std::filesystem::exists(fontPath));
+                    _defaultFont = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 20.0f);
+                    MFA_ASSERT(_defaultFont != nullptr);
+                }
+                { // Bold font
+                    auto const fontPath =
+                        Path::Get("fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf");
+                    MFA_ASSERT(std::filesystem::exists(fontPath));
+                    _boldFont = io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 20.0f);
+                    MFA_ASSERT(_boldFont != nullptr);
+                }
+            }
+        }
+    );
+    _ui->UpdateSignal.Register([this]() -> void { OnUI(Time::DeltaTimeSec()); });
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareCamera()
+{
+    _camera = std::make_unique<MFA::ObserverCamera>(
+        [this]()->VkExtent2D
+        {
+            return _sceneWindowSize;
+        },
+        [this]()->bool{return _sceneWindowFocused;}
+    );
+
+    _camera->SetLocalPosition(glm::vec3{ -54.0f, -36.0f, 69.0f });
+    _camera->SetLocalRotation(Rotation{ {-23.0f, 140.0f, 180.0f} });
+    _camera->Update(1.0f / 120.0f);
+
+    auto cameraBuffer = RB::CreateHostVisibleUniformBuffer(
+        LogicalDevice::GetVkDevice(),
+        LogicalDevice::GetPhysicalDevice(),
+        sizeof(BlinnPhongPipeline::Camera),
+        LogicalDevice::GetMaxFramePerFlight()
+    );
+    _cameraBufferTracker = std::make_unique<HostVisibleBufferTracker>(cameraBuffer);
+
+    BlinnPhongPipeline::Camera cameraData
+    {
+        .viewProjection = _camera->ViewProjection(),
+        .position = _camera->GlobalPosition()
+    };
+    _cameraBufferTracker->SetData(Alias{cameraData});
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareFishStorageBuffer()
+{
+    auto const spawnBoids = [this]() -> std::vector<Fish>
+    {
+        std::vector<Fish> boids{};
+
+        float const spawnRadius = 5.0f;
+
+        float const speedMin = -10.0f;
+        float const speedMax = 10.0f;
+
+        auto const normalizedIndex = [](int index, int count) -> float
+        {
+            if (count <= 0)
+            {
+                return 0.0f;
+            }
+            return static_cast<float>(index) / static_cast<float>(count);
+        };
+
+        for (int xIdx = 0; xIdx <= _config.fishXCount; ++xIdx)
+        {
+            for (int yIdx = 0; yIdx <= _config.fishYCount; ++yIdx)
+            {
+                for (int zIdx = 0; zIdx <= _config.fishZCount; ++zIdx)
+                {
+                    Fish boid{};
+                    boid.id = static_cast<int>(boids.size());
+
+                    float const xPer = normalizedIndex(xIdx, _config.fishXCount);
+                    float const yPer = normalizedIndex(yIdx, _config.fishYCount);
+                    float const zPer = normalizedIndex(zIdx, _config.fishZCount);
+
+                    float const xPos = xPer * spawnRadius * 2.0f - spawnRadius;
+                    float const yPos = yPer * spawnRadius * 2.0f - spawnRadius;
+                    float const zPos = zPer * spawnRadius * 2.0f - spawnRadius;
+
+                    boid.rbPosition = glm::vec3{xPos, yPos, zPos};
+                    boid.tPosition = boid.rbPosition;
+                    boid.tRotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+                    auto const velX = Math::Random<float>(speedMin, speedMax);
+                    auto const velY = Math::Random<float>(speedMin, speedMax);
+                    auto const velZ = Math::Random<float>(speedMin, speedMax);
+                    boid.rbVelocity = glm::vec3{
+                        velX,
+                        velY,
+                        velZ
+                    };
+
+                    boids.emplace_back(boid);
+                }
+            }
+        }
+
+        return boids;
+    };
+
+    auto const boids = spawnBoids();
+
+    if (_fishStorageBufferTracker == nullptr)
+    {
+        auto fishStorageBuffer = RB::CreateHostVisibleStorageBuffer(
+            LogicalDevice::GetVkDevice(),
+            LogicalDevice::GetPhysicalDevice(),
+            sizeof(Fish) * boids.size(),
+            LogicalDevice::GetMaxFramePerFlight()
+        );
+
+        _fishStorageBufferTracker = std::make_unique<HostVisibleBufferTracker>(
+            fishStorageBuffer,
+            Alias(boids.data(), boids.size())
+        );
+    }
+    else 
+    {
+        _fishStorageBufferTracker->SetData(Alias(boids.data(), boids.size()));
+    }
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::UpdateCamera(float deltaTime)
+{
+    _camera->Update(deltaTime);
+    if (_camera->IsDirty())
+    {
+        MFA::BlinnPhongPipeline::Camera cameraData
+        {
+            .viewProjection = _camera->ViewProjection(),
+            .position = _camera->GlobalPosition()
+        };
+        _cameraBufferTracker->SetData(Alias{cameraData});
+    }
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::UpdateBufferTrackers(RT::CommandRecordState const & recordState)
+{
+    _cameraBufferTracker->Update(recordState);
+    _fishStorageBufferTracker->Update(recordState);
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::Run()
 {
     SDL_GL_SetSwapInterval(0);
     SDL_Event e;
@@ -103,7 +261,7 @@ void EmptyApp::Run()
 
 //======================================================================================================================
 
-void EmptyApp::Update(float deltaTime)
+void BoidsSimulationApp::Update(float deltaTime)
 {
     if (_sceneWindowResized == true)
     {
@@ -112,18 +270,22 @@ void EmptyApp::Update(float deltaTime)
         return;
     }
 
+    UpdateCamera(deltaTime);
+
     _ui->Update();
 }
 
 //======================================================================================================================
 
-void EmptyApp::Render(MFA::RT::CommandRecordState &recordState)
+void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
-    // device->BeginCommandBuffer(
+    UpdateBufferTrackers(recordState);
+
+    // LogicalDevice::BeginCommandBuffer(
     //     recordState,
     //     RT::CommandBufferType::Compute
     // );
-    // device->EndCommandBuffer(recordState);
+    // LogicalDevice::EndCommandBuffer(recordState);
 
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
@@ -142,21 +304,21 @@ void EmptyApp::Render(MFA::RT::CommandRecordState &recordState)
 
 //======================================================================================================================
 
-void EmptyApp::Resize()
+void BoidsSimulationApp::Resize()
 {
     _sceneWindowResized = true;
 }
 
 //======================================================================================================================
 
-void EmptyApp::Reload()
+void BoidsSimulationApp::Reload()
 {
     LogicalDevice::DeviceWaitIdle();
 }
 
 //======================================================================================================================
 
-void EmptyApp::OnSDL_Event(SDL_Event *event)
+void BoidsSimulationApp::OnSDL_Event(SDL_Event *event)
 {
     // if (UI::Instance != nullptr && UI::Instance->HasFocus() == true)
     // {
@@ -178,7 +340,7 @@ void EmptyApp::OnSDL_Event(SDL_Event *event)
 
 //======================================================================================================================
 
-void EmptyApp::OnUI(float deltaTimeSec)
+void BoidsSimulationApp::OnUI(float deltaTimeSec)
 {
     ApplyUI_Style();
     _ui->DisplayDockSpace();
@@ -188,7 +350,7 @@ void EmptyApp::OnUI(float deltaTimeSec)
 
 //======================================================================================================================
 
-void EmptyApp::PrepareSceneRenderPass()
+void BoidsSimulationApp::PrepareSceneRenderPass()
 {
     auto const maxImageCount = LogicalDevice::GetSwapChainImageCount();
 
@@ -247,7 +409,7 @@ void EmptyApp::PrepareSceneRenderPass()
 
 //======================================================================================================================
 
-void EmptyApp::ApplyUI_Style()
+void BoidsSimulationApp::ApplyUI_Style()
 {
     ImGuiStyle &style = ImGui::GetStyle();
     ImVec4 *colors = style.Colors;
@@ -310,18 +472,107 @@ void EmptyApp::ApplyUI_Style()
 
 //======================================================================================================================
 
-void EmptyApp::DisplayParametersWindow()
+void BoidsSimulationApp::DisplayParametersWindow()
 {
     _ui->BeginWindow("Parameters");
 
+//--------------------------------------------------------------
 
+    ImGui::Checkbox("Play", &_play);
+    _step = ImGui::Button("Step");
+    _reset = ImGui::Button("Reset");
+
+    ImGui::InputInt("Fish x count", &_config.fishXCount);
+    ImGui::InputInt("Fish y count", &_config.fishYCount);
+    ImGui::InputInt("Fish z count", &_config.fishZCount);
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+
+    ImGui::Checkbox("Enable separation force", &_config.simulation.bEnableSeparationForce);
+    ImGui::Checkbox("Enable alignment force", &_config.simulation.bEnableAlignmentForce);
+    ImGui::Checkbox("Enable cohesion force", &_config.simulation.bEnableCohesionForce);
+    ImGui::Checkbox("Enable soft collision handling", &_config.simulation.bEnableSoftCollisionHandling);
+    ImGui::Checkbox("Enable soft collision for boundary", &_config.simulation.bEnableSoftCollisionForBoundary);
+    ImGui::Checkbox("Enable hard collision handling", &_config.simulation.bEnableHardCollisionHandling);
+    ImGui::Checkbox("Enable boundary collision handling", &_config.simulation.bEnableBoundaryCollisionHandling);
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+
+    ImGui::InputFloat("Separation radius", &_config.simulation.separationRadius);
+    ImGui::InputFloat("Separation cos", &_config.simulation.separationCos);
+    ImGui::InputFloat("Separation constant", &_config.simulation.separationConstant);
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+
+    ImGui::InputFloat("Alignment radius", &_config.simulation.alignmentRadius);
+    ImGui::InputFloat("Alignment cos", &_config.simulation.alignmentCos);
+    ImGui::InputFloat("Alignment constant", &_config.simulation.alignmentConstant);
+
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+
+    ImGui::InputFloat("Cohesion radius", &_config.simulation.cohesionRadius);
+    ImGui::InputFloat("Cohesion cos", &_config.simulation.cohesionCos);
+    ImGui::InputFloat("Cohesion constant", &_config.simulation.cohesionConstant);
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+
+    ImGui::Checkbox("Clamp speed", &_config.simulation.bClampSpeed);
+    ImGui::InputFloat("Min speed", &_config.simulation.minSpeed);
+    ImGui::InputFloat("Max speed", &_config.simulation.maxSpeed);
+    ImGui::Checkbox("Clamp acceleration", &_config.simulation.bClampAcc);
+    ImGui::InputFloat("Min acceleration", &_config.simulation.minAcc);
+    ImGui::InputFloat("Max acceleration", &_config.simulation.maxAcc);
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+
+    ImGui::InputFloat("Soft collision offset", &_config.simulation.softCollisionOffset);
+    ImGui::InputFloat("Hard collision offset", &_config.simulation.hardCollisionOffset);
+    ImGui::InputFloat("Strict collision radius", &_config.simulation.strictCollisionOffset);
+
+	//--------------------------------------------------------------
+	ImGui::Separator();
+	//--------------------------------------------------------------
+	
+    // ImGui::Checkbox("Enable submarine separation force", &_config.simulation.bEnableSubMarineSeparationForce);
+    // ImGui::Checkbox("Enable submarine alignment force", &_config.simulation.bEnableSubMarineAlignmentForce);
+    // ImGui::Checkbox("Enable submarine cohesion force", &_config.simulation.bEnableSubMarineCohesionForce);
+
+    // ImGui::InputFloat("Submarine speed", &_config.simulation.subMarineSpeed);
+    // ImGui::InputFloat("Submarine separation radius", &_config.simulation.subMarineSeparationRadius);
+    // ImGui::InputFloat("Submarine alignment radius", &_config.simulation.subMarineAlignmentRadius);
+    // ImGui::InputFloat("Submarine cohesion radius", &_config.simulation.subMarineCohesionRadius);
+
+    // ImGui::InputFloat("Submarine separation euler angle", &_config.simulation.subMarineSeparationEulerAngle);
+    // ImGui::InputFloat("Submarine alignment euler angle", &_config.simulation.subMarineAlignmentEulerAngle);
+    // ImGui::InputFloat("Submarine cohesion euler angle", &_config.simulation.subMarineCohesionEulerAngle);
+
+    // ImGui::InputFloat("Submarine separation cos", &_config.simulation.subMarineSeparationCos);
+    // ImGui::InputFloat("Submarine alignment cos", &_config.simulation.subMarineAlignmentCos);
+    // ImGui::InputFloat("Submarine cohesion cos", &_config.simulation.subMarineCohesionCos);
+
+    // ImGui::InputFloat("Submarine separation constant", &_config.simulation.subMarineSeparationConstant);
+    // ImGui::InputFloat("Submarine alignment constant", &_config.simulation.subMarineAlignmentConstant);
+    // ImGui::InputFloat("Submarine cohesion constant", &_config.simulation.subMarineCohesionConstant);
 
     _ui->EndWindow();
 }
 
 //======================================================================================================================
 
-void EmptyApp::DisplaySceneWindow()
+void BoidsSimulationApp::DisplaySceneWindow()
 {
     _ui->BeginWindow("Scene");
     auto sceneWindowSize = ImGui::GetWindowSize();

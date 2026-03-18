@@ -3,5 +3,5 @@
 ## Ideas to implement
 - Draw instanced indirect
 - No cpu, fully compute shader
-- Deferred rendering
+- Deferred rendering, Stylized rendering?
 - SSAO

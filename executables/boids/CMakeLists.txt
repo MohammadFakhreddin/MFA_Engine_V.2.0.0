@@ -7,10 +7,11 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/BoidsAppMain.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BoidsApp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BoidsApp.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/blinn_phong_renderer/BlinnPhongPipeline.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/blinn_phong_renderer/BlinnPhongPipeline.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/blinn_phong_renderer/BlinnPhongRenderer.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/blinn_phong_renderer/BlinnPhongRenderer.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsSimulationConstants.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsFish.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsCollisionTriangle.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsUpdateFishPipeline.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BoidsUpdateFishPipeline.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})

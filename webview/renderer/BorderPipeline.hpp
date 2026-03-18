@@ -2,7 +2,7 @@
 
 #include "RenderTypes.hpp"
 #include "render_pass/DisplayRenderPass.hpp"
-#include "IShadingPipeline.hpp"
+#include "pipeline/IShadingPipeline.hpp"
 
 #include <glm/glm.hpp>
 

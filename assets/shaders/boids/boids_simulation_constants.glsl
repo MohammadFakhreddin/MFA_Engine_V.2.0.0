@@ -1,7 +1,5 @@
-#version 450
-
-#ifndef BOIDS_COMMON
-#define BOIDS_COMMON
+#ifndef BOIDS_SIMULATION_CONSTANTS
+#define BOIDS_SIMULATION_CONSTANTS
 
 struct SimulationConstants
 {
@@ -60,46 +58,6 @@ struct SimulationConstants
 
     int placeholder0;
     int placeholder1;
-};
-
-struct Fish
-{
-    int id;                         // Fish unique index, starts from 0
-
-    vec3 rbPosition;
-
-    vec3 rbVelocity;
-    int placeholder0;
-
-    vec3 rbForce;
-    int placeholder1;
-
-    vec3 tPosition;
-    int placeholder2;
-
-    vec4 tRotation;                 // Used for animation
-
-    vec3 tScale;
-    int placeholder3;
-
-    mat4 tLocalMat4;                // The default transform used to adjust the mesh
-
-    mat4 tGlobalMat4;               // The global transform used for rendering
-};
-
-struct CollisionTriangle
-{
-    vec3 v0;
-    int placeholder0;
-
-    vec3 v1;
-    int placeholder1;
-
-    vec3 v2;
-    int placeholder2;
-
-    vec3 normal;
-    int placeholder3;
 };
 
 #endif

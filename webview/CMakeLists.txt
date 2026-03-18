@@ -6,7 +6,6 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/WebViewContainer.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/WebViewContainer.cpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/renderer/IShadingPipeline.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/TextOverlayPipeline.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/TextOverlayPipeline.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/renderer/SolidFillPipeline.cpp"

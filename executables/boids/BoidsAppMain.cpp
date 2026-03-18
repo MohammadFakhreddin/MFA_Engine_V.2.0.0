@@ -2,7 +2,6 @@
 // Created by mohammad on 2026-03-08.
 //
 
-#include "BedrockLog.hpp"
 #include "BedrockPath.hpp"
 #include "BoidsApp.hpp"
 #include "LogicalDevice.hpp"
@@ -22,7 +21,7 @@ int main()
     {
         auto path = Path::Init();
 
-        EmptyApp app{};
+        BoidsSimulationApp app{};
         app.Run();
     }
 

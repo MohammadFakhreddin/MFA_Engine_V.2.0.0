@@ -1,5 +1,7 @@
 #include "../math_common.glsl"
-#include "boids_common.glsl"
+#include "boids_simulation_constants.glsl"
+#include "boids_fish.glsl"
+#include "boids_collision_triangle.glsl"
 
 #define MAX_N_COUNT 5
 

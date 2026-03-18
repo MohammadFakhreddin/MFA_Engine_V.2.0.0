@@ -16,6 +16,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/Buffers.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShapeGenerator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShapeGenerator.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BlinnPhongPipeline.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BlinnPhongPipeline.hpp"
 )
 
 set(LIBRARY_NAME "Shared")

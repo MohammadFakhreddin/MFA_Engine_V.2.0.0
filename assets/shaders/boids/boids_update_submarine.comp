@@ -1,5 +1,0 @@
-// This shader is used to update the submarine. For now we ignore it.
-
-void main() {
-
-}

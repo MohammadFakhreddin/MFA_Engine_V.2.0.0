@@ -13,12 +13,12 @@ BlinnPhongPipeline::BlinnPhongPipeline(
 	VkRenderPass renderPass,
 	Params params
 )
-	: _params(params)
+	: mParams(params)
 {
 	mRenderPass = renderPass;
 	mDescriptorPool = RB::CreateDescriptorPool(
 		LogicalDevice::GetVkDevice(),
-		_params.maxSets
+		mParams.maxSets
 	);
 
 	CreatePerRenderDescriptorSetLayout();
@@ -56,19 +56,6 @@ void BlinnPhongPipeline::BindPipeline(RT::CommandRecordState& recordState) const
 
 	RB::BindPipeline(recordState, *mPipeline);
 }
-
-//----------------------------------------------------------------------------------------------------------------------
-
-// void BlinnPhongPipeline::SetPushConstants(RT::CommandRecordState& recordState, PushConstants pushConstants) const
-// {
-// 	RB::PushConstants(
-// 		recordState,
-// 		mPipeline->pipelineLayout,
-// 		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-// 		0,
-// 		Alias(pushConstants)
-// 	);
-// }
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -166,65 +153,56 @@ void BlinnPhongPipeline::CreatePipeline()
 	// Position
 	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
 		.location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-		.binding = 0,
+		.binding = mParams.positionBinding,
 		.format = VK_FORMAT_R32G32B32_SFLOAT,
-		.offset = offsetof(Vertex, position),
+		.offset = mParams.positionOffset,
 	});
 	// Normal
 	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
 		.location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-		.binding = 0,
+		.binding = mParams.normalBinding,
 		.format = VK_FORMAT_R32G32B32_SFLOAT,
-		.offset = offsetof(Vertex, normal),
+		.offset = mParams.normalOffset,
 	});
 	// Instance
 	for (int i = 0; i < 4; ++i)
 	{
 	    inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
             .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-            .binding = 1,
+            .binding = mParams.modelBinding,
             .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-            .offset = (uint32_t)offsetof(Instance, model) + (uint32_t)(i * sizeof(glm::vec4))
+            .offset = mParams.modelOffset + static_cast<uint32_t>(i * sizeof(glm::vec4))
         });
 	}
 	// Color
 	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
 	    .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
+        .binding = mParams.colorBinding,
         .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-        .offset = offsetof(Instance, color)
+        .offset = mParams.colorOffset
 	});
     // Specular strength
 	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
         .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
+        .binding = mParams.specularStrengthBinding,
         .format = VK_FORMAT_R32_SFLOAT,
-        .offset = offsetof(Instance, specularStrength)
+        .offset = mParams.specularStrengthOffset
     });
     // Shininess
 	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
         .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = 1,
+        .binding = mParams.shininessBinding,
         .format = VK_FORMAT_R32_SINT,
-        .offset = offsetof(Instance, shininess)
+        .offset = mParams.shininessOffset
     });
 
 	RB::CreateGraphicPipelineOptions pipelineOptions{};
 	pipelineOptions.useStaticViewportAndScissor = false;
-	pipelineOptions.primitiveTopology = _params.topology;
+	pipelineOptions.primitiveTopology = mParams.topology;
 	pipelineOptions.rasterizationSamples = LogicalDevice::GetMaxSampleCount();
-	pipelineOptions.cullMode = _params.cullModeFlags;
+	pipelineOptions.cullMode = mParams.cullModeFlags;
 	pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
-	pipelineOptions.polygonMode = _params.polygonMode;
-
-	// pipeline layout
-	std::vector<VkPushConstantRange> const pushConstantRanges{
-		// VkPushConstantRange {
-		// 	.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,
-		// 	.offset = 0,
-		// 	.size = sizeof(PushConstants),
-		// }
-	};
+	pipelineOptions.polygonMode = mParams.polygonMode;
 
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{mPerPipelineDescriptorLayout->descriptorSetLayout};
 
@@ -232,8 +210,8 @@ void BlinnPhongPipeline::CreatePipeline()
 		LogicalDevice::GetVkDevice(),
 		static_cast<uint32_t>(descriptorSetLayouts.size()),
 		descriptorSetLayouts.data(),
-		static_cast<uint32_t>(pushConstantRanges.size()),
-		pushConstantRanges.data()
+		0,
+		nullptr
 	);
 
 	auto surfaceCapabilities = LogicalDevice::GetSurfaceCapabilities();
