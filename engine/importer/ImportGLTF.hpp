@@ -20,5 +20,5 @@ namespace MFA::Importer
     using Node = AS::GLTF::Node;
     using Skin = AS::GLTF::Skin;
 
-    std::shared_ptr<Model> GLTF_Model(std::string const& path);
+    std::unique_ptr<Model> GLTF_Model(std::string const& path);
 }

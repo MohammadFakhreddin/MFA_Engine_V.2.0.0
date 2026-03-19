@@ -38,6 +38,7 @@ namespace MFA
     {
         if (mDirtyCounter > 0)
         {
+            MFA_ASSERT(mData != nullptr && mData->IsValid());
             RB::UpdateHostVisibleBuffer(
                 LogicalDevice::GetVkDevice(),
                 *mBufferGroup->buffers[recordState.frameIndex % mBufferGroup->buffers.size()],
@@ -101,19 +102,26 @@ namespace MFA
 
     void LocalBufferTracker::Update(RT::CommandRecordState const & recordState)
     {
-        if (mDirtyCounter > 0)
+        if (mHostVisibleDirtyCounter > 0)
         {
+            MFA_ASSERT(mData != nullptr && mData->IsValid());
             RB::UpdateHostVisibleBuffer(
                 LogicalDevice::GetVkDevice(),
                 *mHostVisibleBuffer->buffers[recordState.frameIndex % mHostVisibleBuffer->buffers.size()],
                 Alias(mData->Ptr(), mData->Len())
             );
+            --mHostVisibleDirtyCounter;
+        }
+
+        if (mLocalDirtyCounter > 0)
+        {
+            MFA_ASSERT(mData != nullptr && mData->IsValid());
             RB::UpdateLocalBuffer(
                 recordState.commandBuffer,
                 *mLocalBuffer->buffers[recordState.frameIndex % mLocalBuffer->buffers.size()],
                 *mHostVisibleBuffer->buffers[recordState.frameIndex % mHostVisibleBuffer->buffers.size()]
             );
-            --mDirtyCounter;
+            --mLocalDirtyCounter;
         }
     }
 
@@ -121,8 +129,9 @@ namespace MFA
 
     void LocalBufferTracker::SetData(Alias const & data)
     {
-        mDirtyCounter = (int)mLocalBuffer->buffers.size();
         MFA_ASSERT(data.Len() <= mData->Len());
+        mLocalDirtyCounter = (int)mLocalBuffer->buffers.size();
+        mHostVisibleDirtyCounter = (int)mHostVisibleBuffer->buffers.size();
         std::memcpy(mData->Ptr(), data.Ptr(), data.Len());
     }
 
@@ -131,7 +140,8 @@ namespace MFA
     uint8_t * LocalBufferTracker::Data()
     {
         // Returns the data and resets the counter.
-        mDirtyCounter = (int)LogicalDevice::GetMaxFramePerFlight();
+        mLocalDirtyCounter = (int)mLocalBuffer->buffers.size();
+        mHostVisibleDirtyCounter = (int)mHostVisibleBuffer->buffers.size();
         return mData->Ptr();
     }
 

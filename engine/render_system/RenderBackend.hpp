@@ -2,9 +2,9 @@
 
 #include "AssetShader.hpp"
 #include "AssetTexture.hpp"
-#include "BedrockPlatforms.hpp"
 #include "RenderTypes.hpp"
 
+#include <memory>
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <string>
@@ -532,7 +532,7 @@ namespace MFA::RenderBackend
         uint32_t firstInstance = 0
     );
     // TODO: I think we should return unique ptr for all the cases and then use can decide what to do with them
-    std::shared_ptr<RT::BufferGroup> CreateBufferGroup(
+    std::unique_ptr<RT::BufferGroup> CreateBufferGroup(
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         VkDeviceSize bufferSize,
@@ -555,7 +555,7 @@ namespace MFA::RenderBackend
         uint32_t count
     );
 
-    std::shared_ptr<RT::BufferGroup> CreateLocalStorageBuffer(
+    std::unique_ptr<RT::BufferGroup> CreateLocalStorageBuffer(
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         size_t bufferSize,

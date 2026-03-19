@@ -4,13 +4,20 @@
 
 #include "BoidsApp.hpp"
 
+#include "AssetGLTF_Model.hpp"
 #include "BedrockMath.hpp"
 #include "BedrockPath.hpp"
 #include "BlinnPhongPipeline.hpp"
+#include "BoidsCollisionTriangle.hpp"
 #include "BoidsFish.hpp"
+#include "BufferTracker.hpp"
+#include "ImportGLTF.hpp"
+#include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
+#include "RenderBackend.hpp"
 
 #include <filesystem>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <memory>
 #include <vector>
@@ -40,7 +47,8 @@ BoidsSimulationApp::BoidsSimulationApp()
     PrepareSceneRenderPass();
 
     PrepareCamera();
-    PrepareFishStorageBuffer();
+    PrepareFishes();
+    PrepareScene();
 }
 
 //======================================================================================================================
@@ -111,7 +119,7 @@ void BoidsSimulationApp::PrepareCamera()
 
 //======================================================================================================================
 
-void BoidsSimulationApp::PrepareFishStorageBuffer()
+void BoidsSimulationApp::PrepareFishes()
 {
     auto const spawnBoids = [this]() -> std::vector<Fish>
     {
@@ -171,24 +179,429 @@ void BoidsSimulationApp::PrepareFishStorageBuffer()
 
     auto const boids = spawnBoids();
 
-    if (_fishStorageBufferTracker == nullptr)
+    size_t bufferSize = sizeof(Fish) * boids.size();
+    // As we rely on previous compute shader simulation result before lunching another compute pass, we cannot have more than one buffer. 
+    // As a solution, I can use double buffering and update one while the other is readonly to reduce this dependency and improve parallelization.
+    if (_fishInstanceBuffer == nullptr)
     {
-        auto fishStorageBuffer = RB::CreateHostVisibleStorageBuffer(
+        _fishInstanceBuffer = RB::CreateLocalStorageBuffer(
             LogicalDevice::GetVkDevice(),
             LogicalDevice::GetPhysicalDevice(),
-            sizeof(Fish) * boids.size(),
-            LogicalDevice::GetMaxFramePerFlight()
+            bufferSize,
+            2
         );
+    }
 
-        _fishStorageBufferTracker = std::make_unique<HostVisibleBufferTracker>(
-            fishStorageBuffer,
-            Alias(boids.data(), boids.size())
-        );
-    }
-    else 
+    std::shared_ptr const stageBuffer = RB::CreateStageBuffer(LogicalDevice::GetVkDevice(),
+        LogicalDevice::GetPhysicalDevice(),
+        bufferSize,
+        1
+    );
+
+    auto bufferTracker = std::make_shared<LocalBufferTracker>(
+        _fishInstanceBuffer,
+        stageBuffer,
+        Alias(boids.data(), boids.size())
+    );
+
+    std::shared_ptr<int> counter = std::make_shared<int>(_fishInstanceBuffer->buffers.size() + LogicalDevice::GetMaxFramePerFlight());
+    LogicalDevice::AddRenderTask(
+        [stageBuffer, bufferTracker, counter](RT::CommandRecordState &recordState) -> bool
+        {
+            bufferTracker->Update(recordState);
+            --(*counter);
+            if ((*counter) < 0)
+            {
+                return false;
+            }
+            return true;
+        }
+    );
+    
+}
+
+//======================================================================================================================
+
+std::vector<CollisionTriangle> BoidsSimulationApp::ExtractCollisionTriangles(
+    uint32_t const vertexCount,
+    uint32_t const indexCount,
+    AS::GLTF::Vertex * vertices,
+    AS::GLTF::Index * indices
+)
+{
+    std::vector<CollisionTriangle> triangles{};
+
+    if (vertexCount == 0 || indexCount == 0 || vertices == nullptr || indices == nullptr)
     {
-        _fishStorageBufferTracker->SetData(Alias(boids.data(), boids.size()));
+        return triangles;
     }
+
+    MFA_ASSERT(indexCount % 3 == 0);
+    triangles.reserve(indexCount / 3);
+
+    for (uint32_t index = 0; index < indexCount; index += 3)
+    {
+        auto const i0 = indices[index + 0];
+        auto const i1 = indices[index + 1];
+        auto const i2 = indices[index + 2];
+
+        MFA_ASSERT(i0 < vertexCount);
+        MFA_ASSERT(i1 < vertexCount);
+        MFA_ASSERT(i2 < vertexCount);
+
+        auto const & v0 = vertices[i0].position;
+        auto const & v1 = vertices[i1].position;
+        auto const & v2 = vertices[i2].position;
+
+        triangles.emplace_back(CollisionTriangle{
+            .v0 = v0,
+            .v1 = v1,
+            .v2 = v2,
+            .normal = glm::normalize(glm::cross(v1 - v0, v2 - v1))
+        });
+    }
+
+    return triangles;
+}
+
+//======================================================================================================================
+
+std::vector<CollisionTriangle> BoidsSimulationApp::BakeCollisionTriangles(
+    std::vector<CollisionTriangle> const & triangles,
+    glm::mat4 const & modelMatrix
+)
+{
+    std::vector<CollisionTriangle> bakedTriangles{};
+    bakedTriangles.reserve(triangles.size());
+
+    for (auto const & triangle : triangles)
+    {
+        auto const v0 = glm::vec3(modelMatrix * glm::vec4(triangle.v0, 1.0f));
+        auto const v1 = glm::vec3(modelMatrix * glm::vec4(triangle.v1, 1.0f));
+        auto const v2 = glm::vec3(modelMatrix * glm::vec4(triangle.v2, 1.0f));
+
+        bakedTriangles.emplace_back(CollisionTriangle{
+            .v0 = v0,
+            .v1 = v1,
+            .v2 = v2,
+            .normal = glm::normalize(glm::cross(v1 - v0, v2 - v0))
+        });
+    }
+
+    return bakedTriangles;
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareScene()
+{
+    auto const fishModelPath = Path::Get("boidapp/fish/scene.gltf");
+    auto const cubeModelPath = Path::Get("boidapp/cube/scene.gltf");
+    auto const torusModelPath = Path::Get("boidapp/torus/torus.gltf");
+
+    MFA_ASSERT(std::filesystem::exists(fishModelPath));
+    MFA_ASSERT(std::filesystem::exists(cubeModelPath));
+    MFA_ASSERT(std::filesystem::exists(torusModelPath));
+    MFA_ASSERT(JobSystem::HasInstance() == true);
+
+    auto const loadModel = [](std::string const & modelPath) -> std::shared_ptr<Importer::Model>
+    {
+        auto model = Importer::GLTF_Model(modelPath);
+        MFA_ASSERT(model != nullptr);
+        MFA_ASSERT(model->mesh != nullptr);
+
+        if (model->mesh->IsOptimized() == false)
+        {
+            model->mesh->Optimize();
+        }
+        if (model->mesh->IsCentered() == false)
+        {
+            model->mesh->CenterMesh();
+        }
+
+        return model;
+    };
+
+    auto fishFuture = JobSystem::AssignTask<std::shared_ptr<Importer::Model>>(
+        [fishModelPath, loadModel]() -> std::shared_ptr<Importer::Model>
+        {
+            return loadModel(fishModelPath);
+        }
+    );
+    auto cubeFuture = JobSystem::AssignTask<std::shared_ptr<Importer::Model>>(
+        [cubeModelPath, loadModel]() -> std::shared_ptr<Importer::Model>
+        {
+            return loadModel(cubeModelPath);
+        }
+    );
+    auto torusFuture = JobSystem::AssignTask<std::shared_ptr<Importer::Model>>(
+        [torusModelPath, loadModel]() -> std::shared_ptr<Importer::Model>
+        {
+            return loadModel(torusModelPath);
+        }
+    );
+
+    auto const fishGltfModel = fishFuture.get();
+    auto const cubeGltfModel = cubeFuture.get();
+    auto const torusGltfModel = torusFuture.get();
+
+    MFA_ASSERT(fishGltfModel != nullptr);
+    MFA_ASSERT(cubeGltfModel != nullptr);
+    MFA_ASSERT(torusGltfModel != nullptr);
+
+    std::vector<BlinnPhongPipeline::Vertex> sceneVertices{};
+    std::vector<AS::GLTF::Index> sceneIndices{};
+    std::vector<BlinnPhongPipeline::Instance> sceneInstances{};
+    std::vector<CollisionTriangle> collisionTriangles{};
+
+    auto const appendMesh =
+        [&sceneVertices, &sceneIndices](std::shared_ptr<Importer::Model> const & model, MeshMetadata & metadata) -> void
+        {
+            auto const & mesh = model->mesh;
+            auto const vertexCount = mesh->GetVertexCount();
+            auto const indexCount = mesh->GetIndexCount();
+            auto * vertices = mesh->GetVertexData()->As<AS::GLTF::Vertex>();
+            auto * indices = mesh->GetIndexData()->As<AS::GLTF::Index>();
+
+            metadata.vertexOffset = static_cast<uint32_t>(sceneVertices.size());
+            metadata.indexOffset = static_cast<uint32_t>(sceneIndices.size());
+            metadata.indexCount = indexCount;
+
+            sceneVertices.reserve(sceneVertices.size() + vertexCount);
+            sceneIndices.reserve(sceneIndices.size() + indexCount);
+
+            for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
+            {
+                sceneVertices.emplace_back(BlinnPhongPipeline::Vertex{
+                    .position = vertices[vertexIndex].position,
+                    .normal = vertices[vertexIndex].normal
+                });
+            }
+
+            for (uint32_t index = 0; index < indexCount; ++index)
+            {
+                sceneIndices.emplace_back(metadata.vertexOffset + indices[index]);
+            }
+        };
+
+    appendMesh(fishGltfModel, _fishMeshMetadata);
+    appendMesh(cubeGltfModel, _cageMeshMetadata);
+    appendMesh(torusGltfModel, _torusMeshMetadata);
+
+    glm::mat4 cageInstance{};
+    {
+        auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {10.0f, 10.0f, 10.0f});
+        auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+        cageInstance = rotationMat * scaleMat;
+    }
+
+    std::vector<glm::mat4> torusInstances{};
+    {
+        {
+            auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {5.0f, 5.0f, 5.0f});
+            auto const rotationMat = Rotation{{0.0f, 0.0f, 90.0f}}.GetMatrix();
+            torusInstances.emplace_back(rotationMat * scaleMat);
+        }
+        {
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {9.0f, 0.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {7.8f, 0.0f, 7.8f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {3.0f, 0.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {-9.0f, 0.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {-7.8f, 0.0f, -7.8f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {-3.0f, 0.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+        }
+        {
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {9.0f, -5.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {7.8f, -5.0f, 7.8f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {3.0f, -5.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {-9.0f, -5.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {-7.8f, -5.0f, -7.8f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+            {
+                auto const scaleMat = glm::scale(glm::identity<glm::mat4>(), {2.0f, 2.0f, 2.0f});
+                auto const rotationMat = Rotation{{0.0f, 0.0f, 0.0f}}.GetMatrix();
+                auto const translationMat = glm::translate(glm::identity<glm::mat4>(), {-3.0f, -5.0f, 0.0f});
+                torusInstances.emplace_back(translationMat * rotationMat * scaleMat);
+            }
+        }
+    }
+
+    _cageInstanceMetadata.instanceOffset = static_cast<uint32_t>(sceneInstances.size());
+    _cageInstanceMetadata.instanceCount = 1;
+    sceneInstances.emplace_back(BlinnPhongPipeline::Instance{
+        .model = cageInstance,
+        .color = glm::vec4(0.25f, 0.45f, 0.85f, 1.0f),
+        .specularStrength = 0.6f,
+        .shininess = 16
+    });
+
+    _torusInstanceMetadata.instanceOffset = static_cast<uint32_t>(sceneInstances.size());
+    _torusInstanceMetadata.instanceCount = static_cast<uint32_t>(torusInstances.size());
+    for (auto const & torusInstance : torusInstances)
+    {
+        sceneInstances.emplace_back(BlinnPhongPipeline::Instance{
+            .model = torusInstance,
+            .color = glm::vec4(0.90f, 0.55f, 0.20f, 1.0f),
+            .specularStrength = 0.9f,
+            .shininess = 32
+        });
+    }
+
+    auto const cubeTriangles = ExtractCollisionTriangles(
+        cubeGltfModel->mesh->GetVertexCount(),
+        cubeGltfModel->mesh->GetIndexCount(),
+        cubeGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
+        cubeGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>()
+    );
+    auto cageTriangles = BakeCollisionTriangles(cubeTriangles, cageInstance);
+    for (auto & triangle : cageTriangles)
+    {
+        triangle.normal *= -1.0f;
+    }
+    collisionTriangles.insert(collisionTriangles.end(), cageTriangles.begin(), cageTriangles.end());
+
+    auto const torusTriangles = ExtractCollisionTriangles(
+        torusGltfModel->mesh->GetVertexCount(),
+        torusGltfModel->mesh->GetIndexCount(),
+        torusGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
+        torusGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>()
+    );
+    for (auto const & torusInstance : torusInstances)
+    {
+        auto bakedTorusTriangles = BakeCollisionTriangles(torusTriangles, torusInstance);
+        collisionTriangles.insert(collisionTriangles.end(), bakedTorusTriangles.begin(), bakedTorusTriangles.end());
+    }
+
+    MFA_ASSERT(sceneVertices.empty() == false);
+    MFA_ASSERT(sceneIndices.empty() == false);
+    MFA_ASSERT(sceneInstances.empty() == false);
+    MFA_ASSERT(collisionTriangles.empty() == false);
+
+    auto const device = LogicalDevice::GetVkDevice();
+    auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
+    
+    _sceneVertexBuffer = RB::CreateVertexBufferGroup(
+        device,
+        physicalDevice,
+        sizeof(BlinnPhongPipeline::Vertex) * sceneVertices.size(),
+        1
+    );
+    _sceneInstanceBuffer = RB::CreateVertexBufferGroup(
+        device,
+        physicalDevice,
+        sizeof(BlinnPhongPipeline::Instance) * sceneInstances.size(),
+        1
+    );
+    {
+        auto sceneIndexBuffer = RB::CreateBufferGroup(
+            device,
+            physicalDevice,
+            sizeof(AS::GLTF::Index) * sceneIndices.size(),
+            1,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        );
+        _sceneIndexBuffer = std::shared_ptr<RT::BufferGroup>(std::move(sceneIndexBuffer));
+    }
+    _sceneCollisionTriangleBuffer = RB::CreateLocalStorageBuffer(
+        device,
+        physicalDevice,
+        sizeof(CollisionTriangle) * collisionTriangles.size(),
+        1
+    );
+
+    auto const scheduleLocalUpload = [](std::shared_ptr<LocalBufferTracker> const & bufferTracker) -> void
+    {
+        auto remLifeTime = std::make_shared<int>(bufferTracker->LocalBuffer().buffers.size() + LogicalDevice::GetMaxFramePerFlight());
+        LogicalDevice::AddRenderTask(
+            [bufferTracker, remLifeTime](RT::CommandRecordState & recordState) -> bool
+            {
+                bufferTracker->Update(recordState);
+                (*remLifeTime)--;
+                if (*remLifeTime <= 0)
+                {
+                    return false;
+                }
+
+                return true;
+            }
+        );
+    };
+
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _sceneVertexBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, sizeof(BlinnPhongPipeline::Vertex) * sceneVertices.size(), 1),
+        Alias(sceneVertices.data(), sceneVertices.size())
+    ));
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _sceneInstanceBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, sizeof(BlinnPhongPipeline::Instance) * sceneInstances.size(), 1),
+        Alias(sceneInstances.data(), sceneInstances.size())
+    ));
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _sceneIndexBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, sizeof(AS::GLTF::Index) * sceneIndices.size(), 1),
+        Alias(sceneIndices.data(), sceneIndices.size())
+    ));
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _sceneCollisionTriangleBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, sizeof(CollisionTriangle) * collisionTriangles.size(), 1),
+        Alias(collisionTriangles.data(), collisionTriangles.size())
+    ));
 }
 
 //======================================================================================================================
@@ -212,7 +625,6 @@ void BoidsSimulationApp::UpdateCamera(float deltaTime)
 void BoidsSimulationApp::UpdateBufferTrackers(RT::CommandRecordState const & recordState)
 {
     _cameraBufferTracker->Update(recordState);
-    _fishStorageBufferTracker->Update(recordState);
 }
 
 //======================================================================================================================

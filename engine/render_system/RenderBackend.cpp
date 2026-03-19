@@ -2568,7 +2568,7 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
-    std::shared_ptr<RT::BufferGroup> CreateBufferGroup(
+    std::unique_ptr<RT::BufferGroup> CreateBufferGroup(
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         VkDeviceSize const bufferSize,
@@ -2589,7 +2589,7 @@ namespace MFA::RenderBackend
 		    );
 	    }
 
-	    auto bufferGroup = std::make_shared<RT::BufferGroup>(
+	    auto bufferGroup = std::make_unique<RT::BufferGroup>(
 		    std::move(buffers),
 		    bufferSize,
             bufferUsageFlagBits,
@@ -2639,7 +2639,7 @@ namespace MFA::RenderBackend
 
     //-------------------------------------------------------------------------------------------------
 
-    std::shared_ptr<RT::BufferGroup> CreateLocalStorageBuffer(
+    std::unique_ptr<RT::BufferGroup> CreateLocalStorageBuffer(
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         size_t const bufferSize,

@@ -5,7 +5,9 @@
 #ifndef BOID_APP_HPP
 #define BOID_APP_HPP
 
+#include "AssetGLTF_Mesh.hpp"
 #include "BoidsUpdateFishPipeline.hpp"
+#include "BufferTracker.hpp"
 #include "RenderTypes.hpp"
 #include "SceneRenderPass.hpp"
 #include "Time.hpp"
@@ -13,11 +15,12 @@
 #include "camera/ObserverCamera.hpp"
 #include "BlinnPhongPipeline.hpp"
 
+#include "BoidsCollisionTriangle.hpp"
 #include "BoidsSimulationConstants.hpp"
 
 #include <SDL_events.h>
 #include <memory>
-#include <optional>
+#include <vector>
 
 class BoidsSimulationApp
 {
@@ -48,7 +51,23 @@ private:
 
     void PrepareCamera();
 
-    void PrepareFishStorageBuffer();
+    void PrepareFishes();
+
+    [[nodiscard]]
+    static std::vector<CollisionTriangle> ExtractCollisionTriangles(
+        uint32_t vertexCount,
+        uint32_t indexCount,
+        MFA::AS::GLTF::Vertex * vertices,
+        MFA::AS::GLTF::Index * indices
+    );
+
+    [[nodiscard]]
+    static std::vector<CollisionTriangle> BakeCollisionTriangles(
+        std::vector<CollisionTriangle> const & triangles,
+        glm::mat4 const & modelMatrix
+    );
+
+    void PrepareScene();
 
     void UpdateCamera(float deltaTime);
 
@@ -84,9 +103,34 @@ private:
 
     int _activeImageIndex{};
 
+    struct MeshMetadata
+    {
+        uint32_t vertexOffset{};
+        uint32_t indexOffset{};
+        uint32_t indexCount{};
+    };
+
+    struct InstanceMetadata
+    {
+        uint32_t instanceOffset{};
+        uint32_t instanceCount{};
+    };
+
     std::unique_ptr<MFA::ObserverCamera> _camera{};
     std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
     std::unique_ptr<MFA::HostVisibleBufferTracker> _fishStorageBufferTracker{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneVertexBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _fishInstanceBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneInstanceBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneIndexBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneCollisionTriangleBuffer{};
+
+    MeshMetadata _fishMeshMetadata{};
+    MeshMetadata _cageMeshMetadata{};
+    MeshMetadata _torusMeshMetadata{};
+
+    InstanceMetadata _cageInstanceMetadata{};
+    InstanceMetadata _torusInstanceMetadata{};
 
     // Rendering params
     std::unique_ptr<MFA::BlinnPhongPipeline> _boidsShadingPipeline{};

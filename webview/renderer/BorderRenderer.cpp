@@ -78,7 +78,7 @@ namespace MFA
             bufferCount
         );
 
-        auto bufferTracker = std::make_unique<LocalBufferTracker>(vertexBuffer, stageBuffer);
+        auto bufferTracker = std::make_unique<LocalBufferTracker>(std::move(vertexBuffer), stageBuffer);
         bufferTracker->SetData(Alias(data));
 
         return bufferTracker;

@@ -22,6 +22,9 @@ namespace MFA
 
         RT::BufferGroup const & HostVisibleBuffer() const;
 
+        [[nodiscard]]
+        bool IsDirty() const {return mDirtyCounter > 0;}
+
     private:
 
         std::shared_ptr<RT::BufferGroup> mBufferGroup;
@@ -58,11 +61,15 @@ namespace MFA
         [[nodiscard]]
         RT::BufferGroup const & LocalBuffer() const;
 
+        [[nodiscard]]
+        bool IsDirty() const {return mLocalDirtyCounter > 0;}
+
     private:
 
         std::shared_ptr<RT::BufferGroup> mLocalBuffer{};
         std::shared_ptr<RT::BufferGroup> mHostVisibleBuffer{};
-        int mDirtyCounter = 0;
+        int mHostVisibleDirtyCounter = 0;
+        int mLocalDirtyCounter = 0;
         std::unique_ptr<Blob> mData {};
     };
 }

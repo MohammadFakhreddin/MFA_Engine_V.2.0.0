@@ -1113,9 +1113,9 @@ namespace MFA::Importer
 
 	//-------------------------------------------------------------------------------------------------
 
-    std::shared_ptr<MFA::Importer::Model> GLTF_Model(std::string const& path)
+    std::unique_ptr<MFA::Importer::Model> GLTF_Model(std::string const& path)
     {
-        std::shared_ptr<Model> model = nullptr;
+        std::unique_ptr<Model> model = nullptr;
         if (MFA_VERIFY(path.empty() == false))
         {
             namespace TG = tinygltf;
@@ -1209,7 +1209,7 @@ namespace MFA::Importer
                     textures.emplace_back(texture);
                 }
 
-                model = std::make_shared<Model>();
+                model = std::make_unique<Model>();
                 model->mesh = mesh;
                 model->textures = textures;
             }

@@ -4,6 +4,7 @@
 
 #include "BedrockPath.hpp"
 #include "BoidsApp.hpp"
+#include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
 
 using namespace MFA;
@@ -20,6 +21,7 @@ int main()
     assert(device->IsValid() == true);
     {
         auto path = Path::Init();
+        auto jobSystem = JobSystem::Instantiate();
 
         BoidsSimulationApp app{};
         app.Run();

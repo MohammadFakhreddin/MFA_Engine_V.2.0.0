@@ -1,0 +1,61 @@
+{
+    "fishXCount" : 5,
+	"fishYCount" : 5,
+	"fishZCount" : 5,
+
+	"displayBoidMesh": true,
+	"displayWireFrame": false,
+
+	"displaySeparationRadius": false,
+	"displayAlignmentRadius": false,
+	"displayCohesionRadius": false,
+
+	"enableSeparationForce": true,
+	"enableAlignmentForce": true,
+	"enableCohesionForce": true,
+	"enableSoftCollisionHandling": true,
+	"enableSoftCollisionForBoundary": true,
+	"enableHardCollisionHandling": false,
+	"enableBoundaryCollisionHandling": true,
+
+	"separationRadius": 2.0,
+	"alignmentRadius": 4.0,
+	"cohesionRadius": 4.0,
+
+	"separationEulerAngle": 170.0,
+	"alignmentEulerAngle": 90.0,
+	"cohesionEulerAngle": 90.0,
+
+	"separationConstant": 10.0,
+	"cohesionConstant": 0.25,
+	"alignmentConstant": 0.25,
+
+	"clampSpeed": true,
+	"minSpeed": 5.0,
+	"maxSpeed": 10.0,
+
+	"clampAcc": false,
+	"minAcc": 0.0,
+	"maxAcc": 20.0,
+
+	"softCollisionOffset": 0.4,
+	"hardCollisionOffset": 0.4,
+	"strictCollisionOffset": 0.4,
+	"softCollisionRadius": 2.0,
+	"enableSubMarineSeparationForce": true,
+	"enableSubMarineAlignmentForce": true,
+	"enableSubMarineCohesionForce": true,
+
+	"subMarineSpeed": 5.0,
+	"subMarineSeparationRadius": 4.0,
+	"subMarineAlignmentRadius": 6.0,
+	"subMarineCohesionRadius": 10.0,
+
+	"subMarineSeparationEulerAngle": 180.0,
+	"subMarineAlignmentEulerAngle": 90.0,
+	"subMarineCohesionEulerAngle": 180.0,
+
+	"subMarineSeparationConstant": 100.0,
+	"subMarineAlignmentConstant": 0.1,
+	"subMarineCohesionConstant": 5.0
+}
