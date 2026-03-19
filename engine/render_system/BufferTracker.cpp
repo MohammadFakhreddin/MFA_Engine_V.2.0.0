@@ -115,6 +115,7 @@ namespace MFA
 
         if (mLocalDirtyCounter > 0)
         {
+            MFA_ASSERT(recordState.commandBuffer != nullptr);
             MFA_ASSERT(mData != nullptr && mData->IsValid());
             RB::UpdateLocalBuffer(
                 recordState.commandBuffer,

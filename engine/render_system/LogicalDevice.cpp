@@ -4,6 +4,7 @@
 #include "BedrockLog.hpp"
 #include "BedrockPlatforms.hpp"
 #include "RenderBackend.hpp"
+#include "RenderTypes.hpp"
 
 #include <thread>
 
@@ -870,6 +871,7 @@ namespace MFA
         recordState.commandBufferType = commandBufferType;
         recordState.commandBuffer = commandBuffer;
 
+        if (recordState.commandBufferType == RT::CommandBufferType::Graphic)
         {
             {
                 int const count = (int)_pRenderTasks.size();

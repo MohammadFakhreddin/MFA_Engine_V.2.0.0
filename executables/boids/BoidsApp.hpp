@@ -22,6 +22,17 @@
 #include <memory>
 #include <vector>
 
+struct BlinnPhongLight
+{
+    glm::vec3 direction = glm::normalize(glm::vec3(-1.0f, -1.0f, -0.35f));
+    float ambientStrength = 0.15f;
+
+    glm::vec4 color = glm::vec4(1.0f);
+    float intensity = 1.0f;
+    float specularLightIntensity = 1.0f;
+    int shininess = 32;
+};
+
 class BoidsSimulationApp
 {
 public:
@@ -51,6 +62,10 @@ private:
 
     void PrepareCamera();
 
+    void PrepareSimulationConstants();
+
+    void PrepareLighting();
+
     void PrepareFishes();
 
     [[nodiscard]]
@@ -69,13 +84,21 @@ private:
 
     void PrepareScene();
 
+    void PrepareBoidsUpdateFishPipeline();
+
+    void PrepareBoidsShadingPipeline();
+
+    void PrepareEnvironmentShadingPipeline();
+
     void UpdateCamera(float deltaTime);
 
     void UpdateBufferTrackers(MFA::RT::CommandRecordState const & recordState);
 
     void ApplyUI_Style();
 
-    void DisplayParametersWindow();
+    void DisplaySimulationParameterWindow();
+
+    void DisplayLightingParametersWindow();
 
     // You need to be able to select and view objects in the editor window
     void DisplaySceneWindow();
@@ -119,6 +142,8 @@ private:
     std::unique_ptr<MFA::ObserverCamera> _camera{};
     std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
     std::unique_ptr<MFA::HostVisibleBufferTracker> _fishStorageBufferTracker{};
+    std::unique_ptr<MFA::LocalBufferTracker> _simulationConstantsBufferTracker{};
+    std::unique_ptr<MFA::LocalBufferTracker> _lightBufferTracker{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneVertexBuffer{};
     std::shared_ptr<MFA::RT::BufferGroup> _fishInstanceBuffer{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneInstanceBuffer{};
@@ -136,11 +161,17 @@ private:
     std::unique_ptr<MFA::BlinnPhongPipeline> _boidsShadingPipeline{};
     std::unique_ptr<MFA::BlinnPhongPipeline> _environmentShadingPipeline{};
     std::unique_ptr<BoidsUpdateFishPipeline> _boidsUpdateFishPipeline{};
+    MFA::RT::DescriptorSetGroup _boidsShadingDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _environmentShadingDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _boidsUpdateFishDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _boidsUpdateCollisionTriangleDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _boidsUpdateSimulationConstantsDescriptorSets{};
 
     // Simulation params
     bool _play = true;
     bool _step = false;
     bool _reset = false;
+    BlinnPhongLight _light{};
 
     struct Config
     {

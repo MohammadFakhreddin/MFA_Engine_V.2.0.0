@@ -33,28 +33,27 @@ struct SimulationConstants
 
     float softCollisionOffset;
     float hardCollisionOffset;
-    float strictCollisionOffset;
+    
+    // int bEnableSubMarineSeparationForce;
+    // int bEnableSubMarineAlignmentForce;
+    // int bEnableSubMarineCohesionForce;
 
-    int bEnableSubMarineSeparationForce;
-    int bEnableSubMarineAlignmentForce;
-    int bEnableSubMarineCohesionForce;
+    // float subMarineSpeed;
+    // float subMarineSeparationRadius;
+    // float subMarineAlignmentRadius;
+    // float subMarineCohesionRadius;
 
-    float subMarineSpeed;
-    float subMarineSeparationRadius;
-    float subMarineAlignmentRadius;
-    float subMarineCohesionRadius;
+    // float subMarineSeparationEulerAngle;
+    // float subMarineAlignmentEulerAngle;
+    // float subMarineCohesionEulerAngle;
 
-    float subMarineSeparationEulerAngle;
-    float subMarineAlignmentEulerAngle;
-    float subMarineCohesionEulerAngle;
+    // float subMarineSeparationCos;
+    // float subMarineAlignmentCos;
+    // float subMarineCohesionCos;
 
-    float subMarineSeparationCos;
-    float subMarineAlignmentCos;
-    float subMarineCohesionCos;
-
-    float subMarineSeparationConstant;
-    float subMarineAlignmentConstant;
-    float subMarineCohesionConstant;
+    // float subMarineSeparationConstant;
+    // float subMarineAlignmentConstant;
+    // float subMarineCohesionConstant;
 
     int placeholder0;
     int placeholder1;

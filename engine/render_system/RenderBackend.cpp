@@ -2746,7 +2746,7 @@ namespace MFA::RenderBackend
         BaseBlob const& data
     )
     {
-        //assert(buffer.size == data.Len());
+        assert(buffer.size >= data.Len());
         CopyDataToHostVisibleBuffer(device, buffer.memory, data);
     }
 
@@ -2758,7 +2758,7 @@ namespace MFA::RenderBackend
 	    RT::BufferAndMemory const& stageBuffer
     )
     {
-        // MFA_ASSERT(buffer.size == stageBuffer.size);
+        MFA_ASSERT(buffer.size >= stageBuffer.size);
         CopyBuffer(
             commandBuffer,
             stageBuffer.buffer,

@@ -16,3 +16,4 @@ struct CollisionTriangle
     glm::vec3 normal{};
     int placeholder3{};
 };
+static_assert(sizeof(CollisionTriangle) % 16 == 0);

@@ -5,24 +5,49 @@
 #include "BoidsApp.hpp"
 
 #include "AssetGLTF_Model.hpp"
+#include "BedrockAssert.hpp"
 #include "BedrockMath.hpp"
 #include "BedrockPath.hpp"
 #include "BlinnPhongPipeline.hpp"
 #include "BoidsCollisionTriangle.hpp"
 #include "BoidsFish.hpp"
+#include "BoidsSimulationConstants.hpp"
 #include "BufferTracker.hpp"
 #include "ImportGLTF.hpp"
 #include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
 #include "RenderBackend.hpp"
 
+#include <cstddef>
 #include <filesystem>
+#include <cstdint>
+#include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <memory>
 #include <vector>
 
 using namespace MFA;
+
+namespace
+{
+    [[nodiscard]]
+    BlinnPhongPipeline::LightSource ToGpu(BlinnPhongLight const & light)
+    {
+        auto direction = light.direction;
+        auto const directionLength2 = glm::dot(direction, direction);
+        if (directionLength2 > 0.0f)
+        {
+            direction /= std::sqrt(directionLength2);
+        }
+
+        return BlinnPhongPipeline::LightSource{
+            .direction = direction,
+            .ambientStrength = light.ambientStrength,
+            .color = glm::vec3(light.color) * light.intensity
+        };
+    }
+}
 
 //======================================================================================================================
 
@@ -47,6 +72,8 @@ BoidsSimulationApp::BoidsSimulationApp()
     PrepareSceneRenderPass();
 
     PrepareCamera();
+    PrepareSimulationConstants();
+    PrepareLighting();
     PrepareFishes();
     PrepareScene();
 }
@@ -54,6 +81,90 @@ BoidsSimulationApp::BoidsSimulationApp()
 //======================================================================================================================
 
 BoidsSimulationApp::~BoidsSimulationApp() = default;
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareSimulationConstants()
+{
+    _config.fishXCount = 5;
+    _config.fishYCount = 5;
+    _config.fishZCount = 5;
+
+    _config.simulation.bEnableSeparationForce = true;
+    _config.simulation.bEnableAlignmentForce = true;
+    _config.simulation.bEnableCohesionForce = true;
+    _config.simulation.bEnableSoftCollisionHandling = true;
+    _config.simulation.bEnableSoftCollisionForBoundary = true;
+    _config.simulation.bEnableHardCollisionHandling = false;
+    _config.simulation.bEnableBoundaryCollisionHandling = true;
+
+    _config.simulation.separationRadius = 2.0f;
+    _config.simulation.alignmentRadius = 4.0f;
+    _config.simulation.cohesionRadius = 4.0f;
+
+    _config.simulation.separationCos = -0.9848077f;
+    _config.simulation.alignmentCos = 0.0f;
+    _config.simulation.cohesionCos = 0.0f;
+
+    _config.simulation.separationConstant = 10.0f;
+    _config.simulation.cohesionConstant = 0.25f;
+    _config.simulation.alignmentConstant = 0.25f;
+
+    _config.simulation.bClampSpeed = true;
+    _config.simulation.minSpeed = 5.0f;
+    _config.simulation.maxSpeed = 10.0f;
+
+    _config.simulation.bClampAcc = false;
+    _config.simulation.minAcc = 0.0f;
+    _config.simulation.maxAcc = 20.0f;
+
+    _config.simulation.softCollisionOffset = 0.4f;
+    _config.simulation.hardCollisionOffset = 0.4f;
+
+    auto simulationConstantsBuffer = RB::CreateLocalUniformBuffer(
+        LogicalDevice::GetVkDevice(),
+        LogicalDevice::GetPhysicalDevice(),
+        sizeof(SimulationConstants),
+        LogicalDevice::GetMaxFramePerFlight()
+    );
+    auto simulationConstantsStageBuffer = RB::CreateStageBuffer(
+        LogicalDevice::GetVkDevice(),
+        LogicalDevice::GetPhysicalDevice(),
+        sizeof(SimulationConstants),
+        1
+    );
+    _simulationConstantsBufferTracker = std::make_unique<LocalBufferTracker>(
+        simulationConstantsBuffer,
+        simulationConstantsStageBuffer,
+        Alias{_config.simulation}
+    );
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareLighting()
+{
+    _light = BlinnPhongLight{};
+
+    auto lightBuffer = RB::CreateLocalUniformBuffer(
+        LogicalDevice::GetVkDevice(),
+        LogicalDevice::GetPhysicalDevice(),
+        sizeof(BlinnPhongPipeline::LightSource),
+        LogicalDevice::GetMaxFramePerFlight()
+    );
+    auto lightStageBuffer = RB::CreateStageBuffer(
+        LogicalDevice::GetVkDevice(),
+        LogicalDevice::GetPhysicalDevice(),
+        sizeof(BlinnPhongPipeline::LightSource),
+        1
+    );
+    auto lightData = ToGpu(_light);
+    _lightBufferTracker = std::make_unique<LocalBufferTracker>(
+        lightBuffer,
+        lightStageBuffer,
+        Alias{lightData}
+    );
+}
 
 //======================================================================================================================
 
@@ -208,7 +319,8 @@ void BoidsSimulationApp::PrepareFishes()
     LogicalDevice::AddRenderTask(
         [stageBuffer, bufferTracker, counter](RT::CommandRecordState &recordState) -> bool
         {
-            bufferTracker->Update(recordState);
+            // This is an exception as we want to clear all buffers before the next dispatch.
+            while (bufferTracker->IsDirty()) bufferTracker->Update(recordState);
             --(*counter);
             if ((*counter) < 0)
             {
@@ -606,6 +718,52 @@ void BoidsSimulationApp::PrepareScene()
 
 //======================================================================================================================
 
+void BoidsSimulationApp::PrepareBoidsUpdateFishPipeline()
+{
+    _boidsUpdateFishPipeline = std::make_unique<BoidsUpdateFishPipeline>();
+
+    MFA_ASSERT(_fishInstanceBuffer != nullptr);
+    MFA_ASSERT(_sceneCollisionTriangleBuffer != nullptr);
+    MFA_ASSERT(_simulationConstantsBufferTracker != nullptr);
+
+    _boidsUpdateFishDescriptorSets = _boidsUpdateFishPipeline->CreateFishesDescriptorSets(*_fishInstanceBuffer);
+    _boidsUpdateCollisionTriangleDescriptorSets =
+        _boidsUpdateFishPipeline->CreateCollisionTrianglesDescriptorSets(*_sceneCollisionTriangleBuffer);
+    _boidsUpdateSimulationConstantsDescriptorSets =
+        _boidsUpdateFishPipeline->CreateSimulationConstantsDescriptorSets(
+            _simulationConstantsBufferTracker->LocalBuffer()
+        );
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareBoidsShadingPipeline()
+{
+    _boidsShadingPipeline = std::make_unique<BlinnPhongPipeline>(_sceneRenderPass->GetRenderPass(), BlinnPhongPipeline::Params{});
+    MFA_ASSERT(_cameraBufferTracker != nullptr);
+    MFA_ASSERT(_lightBufferTracker != nullptr);
+    _boidsShadingDescriptorSets = _boidsShadingPipeline->CreatePerRenderDescriptorSets(
+        _cameraBufferTracker->HostVisibleBuffer(),
+        _lightBufferTracker->LocalBuffer()
+    );
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareEnvironmentShadingPipeline()
+{
+    _environmentShadingPipeline = std::make_unique<BlinnPhongPipeline>(
+        _sceneRenderPass->GetRenderPass(),
+        BlinnPhongPipeline::Params{}
+    );
+    _environmentShadingDescriptorSets = _environmentShadingPipeline->CreatePerRenderDescriptorSets(
+        _cameraBufferTracker->HostVisibleBuffer(),
+        _lightBufferTracker->LocalBuffer()
+    );
+}
+
+//======================================================================================================================
+
 void BoidsSimulationApp::UpdateCamera(float deltaTime)
 {
     _camera->Update(deltaTime);
@@ -625,6 +783,8 @@ void BoidsSimulationApp::UpdateCamera(float deltaTime)
 void BoidsSimulationApp::UpdateBufferTrackers(RT::CommandRecordState const & recordState)
 {
     _cameraBufferTracker->Update(recordState);
+    _simulationConstantsBufferTracker->Update(recordState);
+    _lightBufferTracker->Update(recordState);
 }
 
 //======================================================================================================================
@@ -682,6 +842,8 @@ void BoidsSimulationApp::Update(float deltaTime)
         return;
     }
 
+    // TODO: Whenever the rest button is pressed we have to respawn the fish in case the fish count has changed. We need another parameter for it.
+
     UpdateCamera(deltaTime);
 
     _ui->Update();
@@ -691,13 +853,14 @@ void BoidsSimulationApp::Update(float deltaTime)
 
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
+    LogicalDevice::BeginCommandBuffer(
+        recordState,
+        RT::CommandBufferType::Compute
+    );
+
     UpdateBufferTrackers(recordState);
 
-    // LogicalDevice::BeginCommandBuffer(
-    //     recordState,
-    //     RT::CommandBufferType::Compute
-    // );
-    // LogicalDevice::EndCommandBuffer(recordState);
+    LogicalDevice::EndCommandBuffer(recordState);
 
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
@@ -756,7 +919,8 @@ void BoidsSimulationApp::OnUI(float deltaTimeSec)
 {
     ApplyUI_Style();
     _ui->DisplayDockSpace();
-    DisplayParametersWindow();
+    DisplaySimulationParameterWindow();
+    DisplayLightingParametersWindow();
     DisplaySceneWindow();
 }
 
@@ -884,9 +1048,20 @@ void BoidsSimulationApp::ApplyUI_Style()
 
 //======================================================================================================================
 
-void BoidsSimulationApp::DisplayParametersWindow()
+void BoidsSimulationApp::DisplaySimulationParameterWindow()
 {
-    _ui->BeginWindow("Parameters");
+    _ui->BeginWindow("Simulation parameters");
+
+    bool simulationConstantsChanged = false;
+    auto checkboxInt = [&simulationConstantsChanged](char const * label, int & value) -> void
+    {
+        bool checked = value != 0;
+        if (ImGui::Checkbox(label, &checked))
+        {
+            value = checked ? 1 : 0;
+            simulationConstantsChanged = true;
+        }
+    };
 
 //--------------------------------------------------------------
 
@@ -902,57 +1077,56 @@ void BoidsSimulationApp::DisplayParametersWindow()
 	ImGui::Separator();
 	//--------------------------------------------------------------
 
-    ImGui::Checkbox("Enable separation force", &_config.simulation.bEnableSeparationForce);
-    ImGui::Checkbox("Enable alignment force", &_config.simulation.bEnableAlignmentForce);
-    ImGui::Checkbox("Enable cohesion force", &_config.simulation.bEnableCohesionForce);
-    ImGui::Checkbox("Enable soft collision handling", &_config.simulation.bEnableSoftCollisionHandling);
-    ImGui::Checkbox("Enable soft collision for boundary", &_config.simulation.bEnableSoftCollisionForBoundary);
-    ImGui::Checkbox("Enable hard collision handling", &_config.simulation.bEnableHardCollisionHandling);
-    ImGui::Checkbox("Enable boundary collision handling", &_config.simulation.bEnableBoundaryCollisionHandling);
+    checkboxInt("Enable separation force", _config.simulation.bEnableSeparationForce);
+    checkboxInt("Enable alignment force", _config.simulation.bEnableAlignmentForce);
+    checkboxInt("Enable cohesion force", _config.simulation.bEnableCohesionForce);
+    checkboxInt("Enable soft collision handling", _config.simulation.bEnableSoftCollisionHandling);
+    checkboxInt("Enable soft collision for boundary", _config.simulation.bEnableSoftCollisionForBoundary);
+    checkboxInt("Enable hard collision handling", _config.simulation.bEnableHardCollisionHandling);
+    checkboxInt("Enable boundary collision handling", _config.simulation.bEnableBoundaryCollisionHandling);
 
 	//--------------------------------------------------------------
 	ImGui::Separator();
 	//--------------------------------------------------------------
 
-    ImGui::InputFloat("Separation radius", &_config.simulation.separationRadius);
-    ImGui::InputFloat("Separation cos", &_config.simulation.separationCos);
-    ImGui::InputFloat("Separation constant", &_config.simulation.separationConstant);
+    simulationConstantsChanged = ImGui::InputFloat("Separation radius", &_config.simulation.separationRadius) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Separation cos", &_config.simulation.separationCos) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Separation constant", &_config.simulation.separationConstant) || simulationConstantsChanged;
 
 	//--------------------------------------------------------------
 	ImGui::Separator();
 	//--------------------------------------------------------------
 
-    ImGui::InputFloat("Alignment radius", &_config.simulation.alignmentRadius);
-    ImGui::InputFloat("Alignment cos", &_config.simulation.alignmentCos);
-    ImGui::InputFloat("Alignment constant", &_config.simulation.alignmentConstant);
+    simulationConstantsChanged = ImGui::InputFloat("Alignment radius", &_config.simulation.alignmentRadius) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Alignment cos", &_config.simulation.alignmentCos) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Alignment constant", &_config.simulation.alignmentConstant) || simulationConstantsChanged;
 
 
 	//--------------------------------------------------------------
 	ImGui::Separator();
 	//--------------------------------------------------------------
 
-    ImGui::InputFloat("Cohesion radius", &_config.simulation.cohesionRadius);
-    ImGui::InputFloat("Cohesion cos", &_config.simulation.cohesionCos);
-    ImGui::InputFloat("Cohesion constant", &_config.simulation.cohesionConstant);
+    simulationConstantsChanged = ImGui::InputFloat("Cohesion radius", &_config.simulation.cohesionRadius) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Cohesion cos", &_config.simulation.cohesionCos) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Cohesion constant", &_config.simulation.cohesionConstant) || simulationConstantsChanged;
 
 	//--------------------------------------------------------------
 	ImGui::Separator();
 	//--------------------------------------------------------------
 
-    ImGui::Checkbox("Clamp speed", &_config.simulation.bClampSpeed);
-    ImGui::InputFloat("Min speed", &_config.simulation.minSpeed);
-    ImGui::InputFloat("Max speed", &_config.simulation.maxSpeed);
-    ImGui::Checkbox("Clamp acceleration", &_config.simulation.bClampAcc);
-    ImGui::InputFloat("Min acceleration", &_config.simulation.minAcc);
-    ImGui::InputFloat("Max acceleration", &_config.simulation.maxAcc);
+    checkboxInt("Clamp speed", _config.simulation.bClampSpeed);
+    simulationConstantsChanged = ImGui::InputFloat("Min speed", &_config.simulation.minSpeed) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Max speed", &_config.simulation.maxSpeed) || simulationConstantsChanged;
+    checkboxInt("Clamp acceleration", _config.simulation.bClampAcc);
+    simulationConstantsChanged = ImGui::InputFloat("Min acceleration", &_config.simulation.minAcc) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Max acceleration", &_config.simulation.maxAcc) || simulationConstantsChanged;
 
 	//--------------------------------------------------------------
 	ImGui::Separator();
 	//--------------------------------------------------------------
 
-    ImGui::InputFloat("Soft collision offset", &_config.simulation.softCollisionOffset);
-    ImGui::InputFloat("Hard collision offset", &_config.simulation.hardCollisionOffset);
-    ImGui::InputFloat("Strict collision radius", &_config.simulation.strictCollisionOffset);
+    simulationConstantsChanged = ImGui::InputFloat("Soft collision offset", &_config.simulation.softCollisionOffset) || simulationConstantsChanged;
+    simulationConstantsChanged = ImGui::InputFloat("Hard collision offset", &_config.simulation.hardCollisionOffset) || simulationConstantsChanged;
 
 	//--------------------------------------------------------------
 	ImGui::Separator();
@@ -978,6 +1152,35 @@ void BoidsSimulationApp::DisplayParametersWindow()
     // ImGui::InputFloat("Submarine separation constant", &_config.simulation.subMarineSeparationConstant);
     // ImGui::InputFloat("Submarine alignment constant", &_config.simulation.subMarineAlignmentConstant);
     // ImGui::InputFloat("Submarine cohesion constant", &_config.simulation.subMarineCohesionConstant);
+
+    if (simulationConstantsChanged)
+    {
+        _simulationConstantsBufferTracker->SetData(Alias{_config.simulation});
+    }
+
+    _ui->EndWindow();
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::DisplayLightingParametersWindow()
+{
+    _ui->BeginWindow("Lighting parameters");
+
+    bool lightChanged = false;
+
+    lightChanged = ImGui::InputFloat3("Light direction", reinterpret_cast<float *>(&_light.direction)) || lightChanged;
+    lightChanged = ImGui::ColorPicker4("Light color", reinterpret_cast<float *>(&_light.color)) || lightChanged;
+    lightChanged = ImGui::SliderFloat("Light intensity", &_light.intensity, 0.0f, 10.0f) || lightChanged;
+    lightChanged = ImGui::SliderFloat("Ambient intensity", &_light.ambientStrength, 0.0f, 1.0f) || lightChanged;
+    lightChanged = ImGui::SliderFloat("Specularity", &_light.specularLightIntensity, 0.0f, 10.0f) || lightChanged;
+    lightChanged = ImGui::InputInt("Shininess", &_light.shininess, 1, 256) || lightChanged;
+
+    if (lightChanged && _lightBufferTracker != nullptr)
+    {
+        auto lightData = ToGpu(_light);
+        _lightBufferTracker->SetData(Alias{lightData});
+    }
 
     _ui->EndWindow();
 }

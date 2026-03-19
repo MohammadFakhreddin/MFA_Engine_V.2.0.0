@@ -26,3 +26,4 @@ struct Fish
 
     glm::mat4 tGlobalMat4{1.0f};    // The global transform used for rendering
 };
+static_assert(sizeof(Fish) % 16 == 0);
