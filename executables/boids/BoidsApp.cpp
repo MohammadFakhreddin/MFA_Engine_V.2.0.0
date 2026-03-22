@@ -76,6 +76,8 @@ BoidsSimulationApp::BoidsSimulationApp()
     PrepareLighting();
     PrepareFishes();
     PrepareScene();
+    PreparePipelines();
+    PrepareDescriptorSets();
 }
 
 //======================================================================================================================
@@ -293,14 +295,22 @@ void BoidsSimulationApp::PrepareFishes()
     size_t bufferSize = sizeof(Fish) * boids.size();
     // As we rely on previous compute shader simulation result before lunching another compute pass, we cannot have more than one buffer. 
     // As a solution, I can use double buffering and update one while the other is readonly to reduce this dependency and improve parallelization.
-    if (_fishInstanceBuffer == nullptr)
+    if (_fishInstanceBuffer == nullptr || _fishInstanceBuffer->bufferSize < bufferSize)
     {
+        // TODO: Add a render task to hold old buffer for the necessary amount of time
+        // if (_fishInstanceBuffer != nullptr)
+        // {
+
+        // }
+
         _fishInstanceBuffer = RB::CreateLocalStorageBuffer(
             LogicalDevice::GetVkDevice(),
             LogicalDevice::GetPhysicalDevice(),
             bufferSize,
             2
         );
+
+        // TODO Update fish descriptorSet
     }
 
     std::shared_ptr const stageBuffer = RB::CreateStageBuffer(LogicalDevice::GetVkDevice(),
@@ -718,48 +728,37 @@ void BoidsSimulationApp::PrepareScene()
 
 //======================================================================================================================
 
-void BoidsSimulationApp::PrepareBoidsUpdateFishPipeline()
+void BoidsSimulationApp::PreparePipelines()
 {
-    _boidsUpdateFishPipeline = std::make_unique<BoidsUpdateFishPipeline>();
+    _pUpdateFishCompute = std::make_unique<BoidsUpdateFishPipeline>();
 
-    MFA_ASSERT(_fishInstanceBuffer != nullptr);
-    MFA_ASSERT(_sceneCollisionTriangleBuffer != nullptr);
-    MFA_ASSERT(_simulationConstantsBufferTracker != nullptr);
-
-    _boidsUpdateFishDescriptorSets = _boidsUpdateFishPipeline->CreateFishesDescriptorSets(*_fishInstanceBuffer);
-    _boidsUpdateCollisionTriangleDescriptorSets =
-        _boidsUpdateFishPipeline->CreateCollisionTrianglesDescriptorSets(*_sceneCollisionTriangleBuffer);
-    _boidsUpdateSimulationConstantsDescriptorSets =
-        _boidsUpdateFishPipeline->CreateSimulationConstantsDescriptorSets(
-            _simulationConstantsBufferTracker->LocalBuffer()
-        );
-}
-
-//======================================================================================================================
-
-void BoidsSimulationApp::PrepareBoidsShadingPipeline()
-{
-    _boidsShadingPipeline = std::make_unique<BlinnPhongPipeline>(_sceneRenderPass->GetRenderPass(), BlinnPhongPipeline::Params{});
-    MFA_ASSERT(_cameraBufferTracker != nullptr);
-    MFA_ASSERT(_lightBufferTracker != nullptr);
-    _boidsShadingDescriptorSets = _boidsShadingPipeline->CreatePerRenderDescriptorSets(
-        _cameraBufferTracker->HostVisibleBuffer(),
-        _lightBufferTracker->LocalBuffer()
-    );
-}
-
-//======================================================================================================================
-
-void BoidsSimulationApp::PrepareEnvironmentShadingPipeline()
-{
-    _environmentShadingPipeline = std::make_unique<BlinnPhongPipeline>(
+    _pShadingGraphic = std::make_unique<BlinnPhongPipeline>(
         _sceneRenderPass->GetRenderPass(),
         BlinnPhongPipeline::Params{}
     );
-    _environmentShadingDescriptorSets = _environmentShadingPipeline->CreatePerRenderDescriptorSets(
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareDescriptorSets()
+{
+    MFA_ASSERT(_sceneCollisionTriangleBuffer != nullptr);
+    _dsColliders = _pUpdateFishCompute->CreateCollisionTrianglesDescriptorSets(*_sceneCollisionTriangleBuffer);
+    
+    MFA_ASSERT(_simulationConstantsBufferTracker != nullptr);
+    _dsConstants = _pUpdateFishCompute->CreateSimulationConstantsDescriptorSets(
+        _simulationConstantsBufferTracker->LocalBuffer()
+    );
+
+    MFA_ASSERT(_cameraBufferTracker != nullptr);
+    MFA_ASSERT(_lightBufferTracker != nullptr);
+    _dsCameraLighting = _pBoidsShading->CreatePerRenderDescriptorSets(
         _cameraBufferTracker->HostVisibleBuffer(),
         _lightBufferTracker->LocalBuffer()
     );
+
+    MFA_ASSERT(_fishInstanceBuffer != nullptr);
+    _dsFishbuffer = _pUpdateFishCompute->CreateFishesDescriptorSets(*_fishInstanceBuffer);
 }
 
 //======================================================================================================================
@@ -853,13 +852,16 @@ void BoidsSimulationApp::Update(float deltaTime)
 
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
+    // TODO: Start from here.
     LogicalDevice::BeginCommandBuffer(
         recordState,
         RT::CommandBufferType::Compute
     );
 
     UpdateBufferTrackers(recordState);
-
+    
+    _pUpdateFishCompute->BindPipeline(recordState);
+    
     LogicalDevice::EndCommandBuffer(recordState);
 
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);

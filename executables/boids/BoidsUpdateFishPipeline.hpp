@@ -34,10 +34,18 @@ public:
 
     void BindPipeline(MFA::RT::CommandRecordState & recordState) const;
 
-    void BindDescriptorSets(
+    void BindFishes(
         MFA::RT::CommandRecordState const & recordState,
-        MFA::RT::DescriptorSetGroup const & fishesDescriptorSets,
-        MFA::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSets,
+        MFA::RT::DescriptorSetGroup const & fishesDescriptorSets
+    ) const;
+
+    void BindCollisionTriangles(
+        MFA::RT::CommandRecordState const & recordState,
+        MFA::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSets
+    ) const;
+
+    void BindSimulationConstants(
+        MFA::RT::CommandRecordState const & recordState,
         MFA::RT::DescriptorSetGroup const & simulationConstantsDescriptorSets
     ) const;
 

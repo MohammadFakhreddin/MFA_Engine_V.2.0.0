@@ -84,11 +84,9 @@ private:
 
     void PrepareScene();
 
-    void PrepareBoidsUpdateFishPipeline();
+    void PreparePipelines();
 
-    void PrepareBoidsShadingPipeline();
-
-    void PrepareEnvironmentShadingPipeline();
+    void PrepareDescriptorSets();
 
     void UpdateCamera(float deltaTime);
 
@@ -158,14 +156,13 @@ private:
     InstanceMetadata _torusInstanceMetadata{};
 
     // Rendering params
-    std::unique_ptr<MFA::BlinnPhongPipeline> _boidsShadingPipeline{};
-    std::unique_ptr<MFA::BlinnPhongPipeline> _environmentShadingPipeline{};
-    std::unique_ptr<BoidsUpdateFishPipeline> _boidsUpdateFishPipeline{};
-    MFA::RT::DescriptorSetGroup _boidsShadingDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _environmentShadingDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _boidsUpdateFishDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _boidsUpdateCollisionTriangleDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _boidsUpdateSimulationConstantsDescriptorSets{};
+    std::unique_ptr<MFA::BlinnPhongPipeline> _pBoidsShading{};
+    std::unique_ptr<MFA::BlinnPhongPipeline> _pShadingGraphic{};
+    std::unique_ptr<BoidsUpdateFishPipeline> _pUpdateFishCompute{};
+    MFA::RT::DescriptorSetGroup _dsCameraLighting{};
+    MFA::RT::DescriptorSetGroup _dsFishbuffer{};
+    MFA::RT::DescriptorSetGroup _dsColliders{};
+    MFA::RT::DescriptorSetGroup _dsConstants{};
 
     // Simulation params
     bool _play = true;

@@ -5,6 +5,7 @@
 #include "DescriptorSetSchema.hpp"
 #include "ImportShader.hpp"
 #include "LogicalDevice.hpp"
+#include "RenderBackend.hpp"
 
 using namespace MFA;
 
@@ -63,24 +64,32 @@ void BoidsUpdateFishPipeline::BindPipeline(RT::CommandRecordState & recordState)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-void BoidsUpdateFishPipeline::BindDescriptorSets(
-    RT::CommandRecordState const & recordState,
-    RT::DescriptorSetGroup const & fishesDescriptorSets,
-    RT::DescriptorSetGroup const & collisionTrianglesDescriptorSets,
-    RT::DescriptorSetGroup const & simulationConstantsDescriptorSets
+void BoidsUpdateFishPipeline::BindFishes(
+    MFA::RT::CommandRecordState const & recordState,
+    MFA::RT::DescriptorSetGroup const & fishesDescriptorSet
 ) const
 {
-    RB::AutoBindDescriptorSet(recordState, RB::UpdateFrequency::PerPipeline, fishesDescriptorSets);
-    RB::AutoBindDescriptorSet(
-        recordState,
-        RB::UpdateFrequency::PerGeometry,
-        collisionTrianglesDescriptorSets
-    );
-    RB::AutoBindDescriptorSet(
-        recordState,
-        RB::UpdateFrequency::PerInstance,
-        simulationConstantsDescriptorSets
-    );
+    RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)0, fishesDescriptorSet);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void BoidsUpdateFishPipeline::BindCollisionTriangles(
+    MFA::RT::CommandRecordState const & recordState,
+    MFA::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSet
+) const
+{
+    RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)1, collisionTrianglesDescriptorSet);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void BoidsUpdateFishPipeline::BindSimulationConstants(
+    MFA::RT::CommandRecordState const & recordState,
+    MFA::RT::DescriptorSetGroup const & simulationConstantsDescriptorSet
+) const
+{
+    RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)2, simulationConstantsDescriptorSet);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
