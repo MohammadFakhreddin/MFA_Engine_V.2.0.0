@@ -1,9 +1,11 @@
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
-layout(location = 2) in vec4 inModelRow0;
-layout(location = 3) in vec4 inModelRow1;
-layout(location = 4) in vec4 inModelRow2;
-layout(location = 5) in vec4 inModelRow3;
+
+layout(location = 2) in vec4 inModelCol0;
+layout(location = 3) in vec4 inModelCol1;
+layout(location = 4) in vec4 inModelCol2;
+layout(location = 5) in vec4 inModelCol3;
+
 layout(location = 6) in vec4 inColor;
 layout(location = 7) in float inSpecularStrength;
 layout(location = 8) in int inShininess;
@@ -23,16 +25,19 @@ layout(set = 0, binding = 0, std140) uniform CameraBuffer
 
 void main()
 {
-    mat4 model = transpose(mat4(
-        inModelRow0,
-        inModelRow1,
-        inModelRow2,
-        inModelRow3
-    ));
-
+    mat4 model = mat4(
+        inModelCol0,
+        inModelCol1,
+        inModelCol2,
+        inModelCol3
+    );
+    
     vec4 worldPosition = model * vec4(inPosition, 1.0);
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+
     outWorldPosition = worldPosition.xyz;
-    outWorldNormal = (model * vec4(inNormal, 0.0)).xyz;
+    outWorldNormal = normalMatrix * inNormal;
 
     gl_Position = camera.viewProjection * worldPosition;
 

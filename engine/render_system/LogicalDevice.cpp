@@ -240,7 +240,9 @@ namespace MFA
                 _physicalDevice,
                 _graphicQueueFamily,
                 _presentQueueFamily,
-                _physicalDeviceFeatures
+                _physicalDeviceFeatures,
+                params.extensionCount,
+                params.extensions
             );
             _vkDevice = result.device;
             _physicalMemoryProperties = result.physicalMemoryProperties;

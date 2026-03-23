@@ -17,6 +17,8 @@
 #include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
 #include "RenderBackend.hpp"
+#include "camera/ArcballCamera.hpp"
+#include "vulkan/vulkan_core.h"
 
 #include <cmath>
 #include <cstddef>
@@ -174,20 +176,32 @@ void BoidsSimulationApp::PrepareUI()
 
 void BoidsSimulationApp::PrepareCamera()
 {
-    _camera = std::make_unique<MFA::ObserverCamera>([this]() -> VkExtent2D { return _sceneWindowSize; },
+    _camera = std::make_unique<MFA::ArcballCamera>([this]() -> VkExtent2D { return _sceneWindowSize; },
                                                     [this]() -> bool { return _sceneWindowFocused; });
 
+    
     _camera->SetLocalPosition(glm::vec3{-54.0f, -36.0f, 69.0f});
-    _camera->SetLocalRotation(Rotation{{-23.0f, 140.0f, 180.0f}});
+    // _camera->SetLocalRotation(Rotation{{-23.0f, 140.0f, 180.0f}});
+    
     _camera->Update(1.0f / 120.0f);
 
-    auto cameraBuffer =
-        RB::CreateHostVisibleUniformBuffer(LogicalDevice::GetVkDevice(), LogicalDevice::GetPhysicalDevice(),
-                                           sizeof(BlinnPhongPipeline::Camera), LogicalDevice::GetMaxFramePerFlight());
+    auto const globalPosition = _camera->GlobalPosition();
+    auto const viewProjection = _camera->ViewProjection();
+
+    auto cameraBuffer = RB::CreateHostVisibleUniformBuffer(
+        LogicalDevice::GetVkDevice(), 
+        LogicalDevice::GetPhysicalDevice(),
+        sizeof(BlinnPhongPipeline::Camera), 
+        LogicalDevice::GetMaxFramePerFlight()
+    );
+
     _cameraBufferTracker = std::make_unique<HostVisibleBufferTracker>(cameraBuffer);
 
-    BlinnPhongPipeline::Camera cameraData{.viewProjection = _camera->ViewProjection(),
-                                          .position = _camera->GlobalPosition()};
+    BlinnPhongPipeline::Camera cameraData{
+        .viewProjection = viewProjection,
+        .position = globalPosition
+    };
+
     _cameraBufferTracker->SetData(Alias{cameraData});
 }
 
@@ -623,22 +637,22 @@ void BoidsSimulationApp::PrepareScene()
 
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneVertexBuffer,
-        RB::CreateStageBuffer(device, physicalDevice, sizeof(BlinnPhongPipeline::Vertex) * sceneVertices.size(), 1),
+        RB::CreateStageBuffer(device, physicalDevice, _sceneVertexBuffer->bufferSize, 1),
         Alias(sceneVertices.data(), sceneVertices.size())));
 
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneInstanceBuffer,
-        RB::CreateStageBuffer(device, physicalDevice, sizeof(BlinnPhongPipeline::Instance) * sceneInstances.size(), 1),
+        RB::CreateStageBuffer(device, physicalDevice, _sceneInstanceBuffer->bufferSize, 1),
         Alias(sceneInstances.data(), sceneInstances.size())));
 
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneIndexBuffer,
-        RB::CreateStageBuffer(device, physicalDevice, sizeof(AS::GLTF::Index) * sceneIndices.size(), 1),
+        RB::CreateStageBuffer(device, physicalDevice, _sceneIndexBuffer->bufferSize, 1),
         Alias(sceneIndices.data(), sceneIndices.size())));
         
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneCollisionTriangleBuffer,
-        RB::CreateStageBuffer(device, physicalDevice, sizeof(CollisionTriangle) * collisionTriangles.size(), 1),
+        RB::CreateStageBuffer(device, physicalDevice, _sceneCollisionTriangleBuffer->bufferSize, 1),
         Alias(collisionTriangles.data(), collisionTriangles.size())));
 }
 
@@ -647,7 +661,7 @@ void BoidsSimulationApp::PrepareScene()
 void BoidsSimulationApp::PreparePipelines()
 {
     _pUpdateFishCompute = std::make_unique<BoidsUpdateFishPipeline>();
-    _pShadingGraphic = std::make_unique<BlinnPhongPipeline>(_sceneRenderPass->GetRenderPass(), BlinnPhongPipeline::Params{});
+    _pShadingGraphic = std::make_unique<BlinnPhongPipeline>(_sceneRenderPass->GetRenderPass(), BlinnPhongPipeline::Params{.dynamicCullMode = true});
 }
 
 //======================================================================================================================
@@ -761,9 +775,9 @@ void BoidsSimulationApp::Update(float deltaTime)
 
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
-    // LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
+    LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
 
-    // UpdateBufferTrackers(recordState);
+    UpdateBufferTrackers(recordState);
 
     // _pUpdateFishCompute->BindPipeline(recordState);
     // _pUpdateFishCompute->BindFishes(recordState, _dsFishbuffer);
@@ -787,7 +801,7 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     //     1
     // );
 
-    // LogicalDevice::EndCommandBuffer(recordState);
+    LogicalDevice::EndCommandBuffer(recordState);
 
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
@@ -797,37 +811,30 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     _pShadingGraphic->BindCameraDescriptorSet(recordState, _dsCamera);
     _pShadingGraphic->BindLightDescriptorSet(recordState, _dsLighting);
 
+    RB::SetFrontFace(recordState.commandBuffer, VK_FRONT_FACE_CLOCKWISE);
+    RB::SetCullMode(recordState.commandBuffer, VK_CULL_MODE_BACK_BIT); 
+
     RB::BindVertexBuffer(recordState, *_sceneVertexBuffer->buffers[0], 0, 0);
     RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], 0);    
 
     // Fish
-    RB::BindVertexBuffer(
-        recordState, 
-        *_fishInstanceBuffer->buffers[recordState.frameIndex % _fishInstanceBuffer->buffers.size()], 
-        1, 
-        0
-    );
-    RB::DrawIndexed(
-        recordState, 
-        _fishMeshMetadata.indexCount, 
-        _fishInstanceMetadata.instanceCount, 
-        _fishMeshMetadata.indexOffset, 
-        0,
-        _fishInstanceMetadata.instanceOffset
-    );
+    // RB::BindVertexBuffer(
+    //     recordState, 
+    //     *_fishInstanceBuffer->buffers[recordState.frameIndex % _fishInstanceBuffer->buffers.size()], 
+    //     1, 
+    //     0
+    // );
+    // RB::DrawIndexed(
+    //     recordState, 
+    //     _fishMeshMetadata.indexCount, 
+    //     _fishInstanceMetadata.instanceCount, 
+    //     _fishMeshMetadata.indexOffset, 
+    //     0,
+    //     _fishInstanceMetadata.instanceOffset
+    // );
 
     // Static scene objects
     RB::BindVertexBuffer(recordState, *_sceneInstanceBuffer->buffers[0], 1, 0);
-
-    // Cage
-    RB::DrawIndexed(
-        recordState, 
-        _cageMeshMetadata.indexCount, 
-        _cageInstanceMetadata.instanceCount, 
-        _cageMeshMetadata.indexOffset, 
-        0, 
-        _cageInstanceMetadata.instanceOffset
-    );
 
     // Torus
     RB::DrawIndexed(
@@ -837,6 +844,18 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
         _torusMeshMetadata.indexOffset, 
         0,
         _torusInstanceMetadata.instanceOffset
+    );
+
+    RB::SetCullMode(recordState.commandBuffer, VK_CULL_MODE_FRONT_BIT); 
+
+    // Cage
+    RB::DrawIndexed(
+        recordState, 
+        _cageMeshMetadata.indexCount, 
+        _cageInstanceMetadata.instanceCount, 
+        _cageMeshMetadata.indexOffset, 
+        0, 
+        _cageInstanceMetadata.instanceOffset
     );
 
     _sceneRenderPass->End(recordState);

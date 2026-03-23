@@ -11,6 +11,7 @@
 #include "SceneRenderPass.hpp"
 #include "Time.hpp"
 #include "UI.hpp"
+#include "camera/ArcballCamera.hpp"
 #include "camera/ObserverCamera.hpp"
 #include "BlinnPhongPipeline.hpp"
 #include "BoidsCollisionTriangle.hpp"
@@ -138,7 +139,9 @@ private:
         uint32_t instanceCount{};
     };
 
-    std::unique_ptr<MFA::ObserverCamera> _camera{};
+    // TODO: Replace ArcballCamera with ObserverCamera
+    // std::unique_ptr<MFA::ObserverCamera> _camera{};
+    std::unique_ptr<MFA::ArcballCamera> _camera{};
     std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
     std::unique_ptr<MFA::HostVisibleBufferTracker> _fishStorageBufferTracker{};
     std::unique_ptr<MFA::LocalBufferTracker> _simulationConstantsBufferTracker{};

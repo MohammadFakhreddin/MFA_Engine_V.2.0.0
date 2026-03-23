@@ -207,11 +207,24 @@ void BlinnPhongPipeline::CreatePipeline()
         .offset = mParams.shininessOffset
     });
 
+	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
+	std::vector<VkDynamicState> dynamicStates{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	if (mParams.dynamicCullMode)
+	{
+		dynamicStates.emplace_back(VK_DYNAMIC_STATE_CULL_MODE);
+		dynamicStates.emplace_back(VK_DYNAMIC_STATE_FRONT_FACE);
+	}
+	dynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo{};
+	dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+	
 	RB::CreateGraphicPipelineOptions pipelineOptions{};
 	pipelineOptions.useStaticViewportAndScissor = false;
 	pipelineOptions.primitiveTopology = mParams.topology;
 	pipelineOptions.rasterizationSamples = LogicalDevice::GetMaxSampleCount();
 	pipelineOptions.cullMode = mParams.cullModeFlags;
+	pipelineOptions.dynamicStateCreateInfo = &dynamicStateCreateInfo;
 	pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
 	pipelineOptions.polygonMode = mParams.polygonMode;
 

@@ -52,12 +52,14 @@ namespace MFA
             VkCullModeFlags cullModeFlags = VK_CULL_MODE_BACK_BIT;
             VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
+            bool dynamicCullMode = false;
             
             uint32_t positionOffset = offsetof(Vertex, position);
             uint32_t positionBinding = 0;
             uint32_t normalOffset = offsetof(Vertex, normal);
             uint32_t normalBinding = 0;
             uint32_t modelOffset = offsetof(Instance, model);
+            // TODO: Realistically these are material data and need to be separated.
             uint32_t modelBinding = 1;
             uint32_t colorOffset = offsetof(Instance, color);
             uint32_t colorBinding = 1;

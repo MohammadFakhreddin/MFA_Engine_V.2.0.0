@@ -90,7 +90,9 @@ namespace MFA::RenderBackend
         VkPhysicalDevice physicalDevice,
         uint32_t graphicsQueueFamily,
         uint32_t presentQueueFamily,
-        VkPhysicalDeviceFeatures const & enabledPhysicalDeviceFeatures
+        VkPhysicalDeviceFeatures const & enabledPhysicalDeviceFeatures,
+        int extraEnabledExtensionCount = 0,
+        char const ** extraEnabledExtensionNames = nullptr
     );
 
     [[nodiscard]]
@@ -745,6 +747,10 @@ namespace MFA::RenderBackend
 
     void DestroyTexture(VkDevice device, RT::GpuTexture& gpuTexture);
 
+    void SetCullMode(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode);
+
+    void SetFrontFace(VkCommandBuffer commandBuffer, VkFrontFace frontFace);
+    
     // Default template (unrecognized type = undefined format)
 	template<typename T>
     constexpr VkFormat ToVkFormat() {

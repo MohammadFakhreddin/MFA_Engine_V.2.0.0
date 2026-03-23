@@ -5,6 +5,7 @@
 #include "BedrockString.hpp"
 #include "ScopeLock.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <set>
 #include <vector>
@@ -295,7 +296,7 @@ namespace MFA::RenderBackend
             // The version of the engine
             .engineVersion = EngineVersion,
             // The version of Vulkan we're using for this application
-            .apiVersion = VK_API_VERSION_1_1
+            .apiVersion = VK_API_VERSION_1_3
         };
         std::vector<char const *> instanceExtensions{};
 
@@ -624,7 +625,9 @@ namespace MFA::RenderBackend
         VkPhysicalDevice physicalDevice,
         uint32_t const graphicsQueueFamily,
         uint32_t const presentQueueFamily,
-        VkPhysicalDeviceFeatures const & enabledPhysicalDeviceFeatures
+        VkPhysicalDeviceFeatures const & enabledPhysicalDeviceFeatures,
+        int const extraEnabledExtensionCount,
+        char const ** extraEnabledExtensionNames
     )
     {
         CreateLogicalDeviceResult logicalDevice{};
@@ -674,6 +677,27 @@ namespace MFA::RenderBackend
     #endif
         enabledExtensionNames.emplace_back(VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME);
         enabledExtensionNames.emplace_back(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
+        if (extraEnabledExtensionNames != nullptr)
+        {
+            for (int extensionIndex = 0; extensionIndex < extraEnabledExtensionCount; ++extensionIndex)
+            {
+                auto const * extensionName = extraEnabledExtensionNames[extensionIndex];
+                if (extensionName == nullptr)
+                {
+                    continue;
+                }
+
+                auto const alreadyAdded = std::find(
+                    enabledExtensionNames.begin(),
+                    enabledExtensionNames.end(),
+                    extensionName
+                ) != enabledExtensionNames.end();
+                if (alreadyAdded == false)
+                {
+                    enabledExtensionNames.emplace_back(extensionName);
+                }
+            }
+        }
 
         auto filteredExtensionNames = FilterSupportedDeviceExtensions(physicalDevice, enabledExtensionNames);
 
@@ -3418,6 +3442,20 @@ namespace MFA::RenderBackend
             device,
             *gpuTexture.imageView
         );
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void SetCullMode(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)
+    {
+        vkCmdSetCullMode(commandBuffer, cullMode);
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void SetFrontFace(VkCommandBuffer commandBuffer, VkFrontFace frontFace)
+    {
+        vkCmdSetFrontFace(commandBuffer, frontFace);
     }
 
     //-------------------------------------------------------------------------------------------------
