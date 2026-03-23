@@ -1,8 +1,10 @@
 #include "ArcballCamera.hpp"
 
 #include "LogicalDevice.hpp"
-#include "UI.hpp"
-#include "BedrockLog.hpp"
+#include "geometric.hpp"
+
+#include <algorithm>
+
 
 namespace MFA
 {
@@ -72,7 +74,7 @@ namespace MFA
 	            }
 	        }
 
-	        SetLocalQuaternion(glm::quatLookAt(forward, _up));
+			UpdateRotation(forward);
 	    }
 	}
 
@@ -121,6 +123,15 @@ namespace MFA
 
 	//-------------------------------------------------------------------------------------------------
 
+	void ArcballCamera::UpdateRotation(glm::vec3 const & forward)
+	{
+		auto const right = glm::cross(_up, forward);
+		auto const up = glm::cross(forward, right);
+		SetLocalQuaternion(glm::quatLookAt(forward, _up));
+	}
+
+	//-------------------------------------------------------------------------------------------------
+
 	void ArcballCamera::OnSDL_Event(SDL_Event* event)
 	{
 	    if (_windowHasFocusCallback() == false)
@@ -139,25 +150,26 @@ namespace MFA
 	    {
 	        if (std::abs(event->wheel.y) > 0) // scroll
 	        {
-	            // Put code for handling "scroll up" here!
-	            auto position = _transform.GetLocalPosition();
-	            auto const camVec = _target - position;
-	            auto const camMag = glm::length(camVec);
-	            auto const camDir = camVec / camMag;
-	            auto const deltaVec = camDir * std::abs(event->wheel.preciseY) * (event->wheel.preciseY > 0.0f ? 1.0f : -1.0f);
-	            auto const deltaMag = glm::length(deltaVec + position - _target);
-	            if (deltaMag >= _minDistance && deltaMag <= _maxDistance)
-	            {
-	                position += deltaVec;
-	                SetLocalPosition(position);
+	            {// Put code for handling "scroll up" here!
+					auto position = _transform.GetLocalPosition();
+					
+					auto const camVec = position - _target;
+					auto camMag = glm::length(camVec);
+					auto const camDir = camVec / camMag;
+					
+					auto newMag = camMag + std::abs(event->wheel.preciseY) * (event->wheel.preciseY > 0.0f ? 1.0f : -1.0f);
+					newMag = std::clamp(newMag, _minDistance, _maxDistance);
 
-	                // auto const camVec = _transform.GetLocalPosition() - _target;
-	                // auto forward = glm::normalize(camVec);
-
-	                SetLocalQuaternion(glm::quatLookAt(-camDir, _up));
-	                _isViewDirty = true;
-	            }
+					position = _target + (newMag * camDir);
+					
+					SetLocalPosition(position);
+					UpdateRotation(camDir);
+				}
+				_isViewDirty = true;
 	        }
 	    }
 	}
+
+	//-------------------------------------------------------------------------------------------------
+
 }

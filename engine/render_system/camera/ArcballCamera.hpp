@@ -26,6 +26,8 @@ namespace MFA
 
         void UpdateMousePosition();
 
+        void UpdateRotation(glm::vec3 const & direction);
+
         void OnSDL_Event(SDL_Event* event);
 
         MFA_VARIABLE1(movementSpeed, float, 10.0f, _)

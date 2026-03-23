@@ -27,7 +27,7 @@
 
 struct BlinnPhongLight
 {
-    glm::vec3 direction = glm::normalize(glm::vec3(-1.0f, -1.0f, -0.35f));
+    glm::vec3 direction = glm::normalize(glm::vec3(1.0f, 1.0f, 0.5f));
     float ambientStrength = 0.15f;
 
     glm::vec4 color = glm::vec4(1.0f);

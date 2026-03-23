@@ -17,7 +17,7 @@ struct Fish
     glm::vec3 tPosition{};
     int placeholder2{};
 
-    glm::vec4 tRotation{};          // Used for animation
+    glm::vec4 tRotation{0.0f, 0.0f, 0.0f, 1.0f};          // Used for animation
 
     glm::vec3 tScale{1.0f};
     int placeholder3{};

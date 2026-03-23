@@ -53,20 +53,23 @@ namespace MFA
             VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
             bool dynamicCullMode = false;
-            
+            // Vertex
             uint32_t positionOffset = offsetof(Vertex, position);
             uint32_t positionBinding = 0;
             uint32_t normalOffset = offsetof(Vertex, normal);
             uint32_t normalBinding = 0;
+            // Instance
             uint32_t modelOffset = offsetof(Instance, model);
-            // TODO: Realistically these are material data and need to be separated.
             uint32_t modelBinding = 1;
+            // Material
             uint32_t colorOffset = offsetof(Instance, color);
             uint32_t colorBinding = 1;
             uint32_t specularStrengthOffset = offsetof(Instance, specularStrength);
             uint32_t specularStrengthBinding = 1;
             uint32_t shininessOffset = offsetof(Instance, shininess);
             uint32_t shininessBinding = 1;
+            // TODO: Flag for flat shading
+            // TODO: Base color texture, etc
         };
 
         explicit BlinnPhongPipeline(

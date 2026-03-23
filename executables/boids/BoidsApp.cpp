@@ -180,8 +180,8 @@ void BoidsSimulationApp::PrepareCamera()
                                                     [this]() -> bool { return _sceneWindowFocused; });
 
     
-    _camera->SetLocalPosition(glm::vec3{-54.0f, -36.0f, 69.0f});
-    // _camera->SetLocalRotation(Rotation{{-23.0f, 140.0f, 180.0f}});
+    _camera->SetLocalPosition(glm::vec3{-54.0f/2, -36.0f/2, 69.0f/2});
+    _camera->SetmaxDistance(100.0f);
     
     _camera->Update(1.0f / 120.0f);
 
@@ -253,6 +253,9 @@ void BoidsSimulationApp::PrepareFishes()
                     auto const velZ = Math::Random<float>(speedMin, speedMax);
                     boid.rbVelocity = glm::vec3{velX, velY, velZ};
 
+                    boid.tLocalMat4 = glm::identity<glm::mat4>();
+                    boid.tGlobalMat4 = glm::translate(glm::identity<glm::mat4>(), boid.tPosition);
+                    
                     boids.emplace_back(boid);
                 }
             }
@@ -559,8 +562,8 @@ void BoidsSimulationApp::PrepareScene()
     _cageInstanceMetadata.instanceOffset = static_cast<uint32_t>(sceneInstances.size());
     _cageInstanceMetadata.instanceCount = 1;
     sceneInstances.emplace_back(BlinnPhongPipeline::Instance{.model = cageInstance,
-                                                             .color = glm::vec4(0.25f, 0.45f, 0.85f, 1.0f),
-                                                             .specularStrength = 0.6f,
+                                                             .color = glm::vec4(0.0f, 0.0f, 0.85f, 1.0f),
+                                                             .specularStrength = 0.0f,
                                                              .shininess = 16});
 
     _torusInstanceMetadata.instanceOffset = static_cast<uint32_t>(sceneInstances.size());
@@ -568,8 +571,8 @@ void BoidsSimulationApp::PrepareScene()
     for (auto const &torusInstance : torusInstances)
     {
         sceneInstances.emplace_back(BlinnPhongPipeline::Instance{.model = torusInstance,
-                                                                 .color = glm::vec4(0.90f, 0.55f, 0.20f, 1.0f),
-                                                                 .specularStrength = 0.9f,
+                                                                 .color = glm::vec4(0.90f, 0.0f, 0.0f, 1.0f),
+                                                                 .specularStrength = 0.0f,
                                                                  .shininess = 32});
     }
 
@@ -772,7 +775,7 @@ void BoidsSimulationApp::Update(float deltaTime)
 }
 
 //======================================================================================================================
-
+// TODO: Support for textures is missing
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
@@ -817,6 +820,7 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     RB::BindVertexBuffer(recordState, *_sceneVertexBuffer->buffers[0], 0, 0);
     RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], 0);    
 
+    // TODO: We either need a separte buffer or pipeline for fish (Binding mismatch)
     // Fish
     // RB::BindVertexBuffer(
     //     recordState, 
@@ -871,7 +875,11 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 
 //======================================================================================================================
 
-void BoidsSimulationApp::Resize() { _sceneWindowResized = true; }
+void BoidsSimulationApp::Resize() 
+{ 
+    _camera->SetProjectionDirty();
+    _sceneWindowResized = true; 
+}
 
 //======================================================================================================================
 
@@ -933,7 +941,7 @@ void BoidsSimulationApp::PrepareSceneRenderPass()
         oldScene->sceneRenderResource = _sceneRenderResource;
         oldScene->sceneFrameBuffer = _sceneFrameBuffer;
         oldScene->textureIDs = _sceneTextureID_List;
-        oldScene->remLifeTime = LogicalDevice::GetMaxFramePerFlight() + 1;
+        oldScene->remLifeTime = LogicalDevice::GetMaxFramePerFlight() * 2 + 1;
         LogicalDevice::AddRenderTask(
             [oldScene](RT::CommandRecordState &recordState) -> bool
             {
