@@ -3,6 +3,7 @@
 #include "AssetShader.hpp"
 #include "AssetTexture.hpp"
 #include "RenderTypes.hpp"
+#include "vulkan/vulkan_core.h"
 
 #include <memory>
 #include <vulkan/vulkan.h>
@@ -520,7 +521,7 @@ namespace MFA::RenderBackend
         RT::CommandRecordState const& recordState,
         RT::BufferAndMemory const& indexBuffer,
         VkDeviceSize offset,
-        VkIndexType indexType
+        VkIndexType indexType = VkIndexType::VK_INDEX_TYPE_UINT32
     );
 
     void DrawIndexed(

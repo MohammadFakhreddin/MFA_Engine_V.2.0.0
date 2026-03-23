@@ -427,7 +427,7 @@ void BoidsSimulationApp::PrepareScene()
         auto *vertices = mesh->GetVertexData()->As<AS::GLTF::Vertex>();
         auto *indices = mesh->GetIndexData()->As<AS::GLTF::Index>();
 
-        metadata.vertexOffset = static_cast<uint32_t>(sceneVertices.size());
+        auto const vertexOffset = sceneVertices.size();
         metadata.indexOffset = static_cast<uint32_t>(sceneIndices.size());
         metadata.indexCount = indexCount;
 
@@ -442,7 +442,7 @@ void BoidsSimulationApp::PrepareScene()
 
         for (uint32_t index = 0; index < indexCount; ++index)
         {
-            sceneIndices.emplace_back(metadata.vertexOffset + indices[index]);
+            sceneIndices.emplace_back(vertexOffset + indices[index]);
         }
     };
 
@@ -574,6 +574,7 @@ void BoidsSimulationApp::PrepareScene()
         ExtractCollisionTriangles(torusGltfModel->mesh->GetVertexCount(), torusGltfModel->mesh->GetIndexCount(),
                                   torusGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
                                   torusGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>());
+
     for (auto const &torusInstance : torusInstances)
     {
         auto bakedTorusTriangles = BakeCollisionTriangles(torusTriangles, torusInstance);
@@ -590,6 +591,7 @@ void BoidsSimulationApp::PrepareScene()
 
     _sceneVertexBuffer = RB::CreateVertexBufferGroup(device, physicalDevice,
                                                      sizeof(BlinnPhongPipeline::Vertex) * sceneVertices.size(), 1);
+
     _sceneInstanceBuffer = RB::CreateVertexBufferGroup(device, physicalDevice,
                                                        sizeof(BlinnPhongPipeline::Instance) * sceneInstances.size(), 1);
     {
@@ -623,14 +625,17 @@ void BoidsSimulationApp::PrepareScene()
         _sceneVertexBuffer,
         RB::CreateStageBuffer(device, physicalDevice, sizeof(BlinnPhongPipeline::Vertex) * sceneVertices.size(), 1),
         Alias(sceneVertices.data(), sceneVertices.size())));
+
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneInstanceBuffer,
         RB::CreateStageBuffer(device, physicalDevice, sizeof(BlinnPhongPipeline::Instance) * sceneInstances.size(), 1),
         Alias(sceneInstances.data(), sceneInstances.size())));
+
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneIndexBuffer,
         RB::CreateStageBuffer(device, physicalDevice, sizeof(AS::GLTF::Index) * sceneIndices.size(), 1),
         Alias(sceneIndices.data(), sceneIndices.size())));
+        
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneCollisionTriangleBuffer,
         RB::CreateStageBuffer(device, physicalDevice, sizeof(CollisionTriangle) * collisionTriangles.size(), 1),
@@ -756,34 +761,33 @@ void BoidsSimulationApp::Update(float deltaTime)
 
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
-    // TODO: Start from here.
-    LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
+    // LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
 
-    UpdateBufferTrackers(recordState);
+    // UpdateBufferTrackers(recordState);
 
-    _pUpdateFishCompute->BindPipeline(recordState);
-    _pUpdateFishCompute->BindFishes(recordState, _dsFishbuffer);
-    _pUpdateFishCompute->BindCollisionTriangles(recordState, _dsColliders);
-    _pUpdateFishCompute->BindSimulationConstants(recordState, _dsConstants);
+    // _pUpdateFishCompute->BindPipeline(recordState);
+    // _pUpdateFishCompute->BindFishes(recordState, _dsFishbuffer);
+    // _pUpdateFishCompute->BindCollisionTriangles(recordState, _dsColliders);
+    // _pUpdateFishCompute->BindSimulationConstants(recordState, _dsConstants);
 
-    float fixedDT = 1.0f / 120.0f;
-    _pUpdateFishCompute->SetPushConstants(
-        recordState,
-        BoidsUpdateFishPipeline::PushConstants {
-            .dt = fixedDT,
-            .fixedDt = fixedDT,
-            .stateMask = 0xFFFFFF
-        }
-    );
+    // float fixedDT = 1.0f / 120.0f;
+    // _pUpdateFishCompute->SetPushConstants(
+    //     recordState,
+    //     BoidsUpdateFishPipeline::PushConstants {
+    //         .dt = fixedDT,
+    //         .fixedDt = fixedDT,
+    //         .stateMask = 0xFFFFFF
+    //     }
+    // );
 
-    vkCmdDispatch(
-        recordState.commandBuffer,
-        (_fishInstanceMetadata.instanceCount + 255) / 256,
-        1,
-        1
-    );
+    // vkCmdDispatch(
+    //     recordState.commandBuffer,
+    //     (_fishInstanceMetadata.instanceCount + 255) / 256,
+    //     1,
+    //     1
+    // );
 
-    LogicalDevice::EndCommandBuffer(recordState);
+    // LogicalDevice::EndCommandBuffer(recordState);
 
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
@@ -794,19 +798,46 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     _pShadingGraphic->BindLightDescriptorSet(recordState, _dsLighting);
 
     RB::BindVertexBuffer(recordState, *_sceneVertexBuffer->buffers[0], 0, 0);
-    RB::BindVertexBuffer(recordState, *_fishInstanceBuffer->buffers[recordState.frameIndex % _fishInstanceBuffer->buffers.size()], 1, _fishInstanceMetadata.instanceOffset);
-    RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], _fishMeshMetadata.indexOffset, VK_INDEX_TYPE_UINT16);
-    RB::DrawIndexed(recordState, _fishMeshMetadata.indexCount, _fishInstanceMetadata.instanceCount, 0, _fishMeshMetadata.vertexOffset);
+    RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], 0);    
 
-    RB::BindVertexBuffer(recordState, *_sceneVertexBuffer->buffers[0], 0, 0);
-    RB::BindVertexBuffer(recordState, *_sceneInstanceBuffer->buffers[0], 1, _cageInstanceMetadata.instanceOffset);
-    RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], _cageMeshMetadata.indexOffset, VK_INDEX_TYPE_UINT16);
-    RB::DrawIndexed(recordState, _cageMeshMetadata.indexCount, _cageInstanceMetadata.instanceCount, 0, _cageMeshMetadata.vertexOffset);
+    // Fish
+    RB::BindVertexBuffer(
+        recordState, 
+        *_fishInstanceBuffer->buffers[recordState.frameIndex % _fishInstanceBuffer->buffers.size()], 
+        1, 
+        0
+    );
+    RB::DrawIndexed(
+        recordState, 
+        _fishMeshMetadata.indexCount, 
+        _fishInstanceMetadata.instanceCount, 
+        _fishMeshMetadata.indexOffset, 
+        0,
+        _fishInstanceMetadata.instanceOffset
+    );
 
-    RB::BindVertexBuffer(recordState, *_sceneVertexBuffer->buffers[0], 0, 0);
-    RB::BindVertexBuffer(recordState, *_sceneInstanceBuffer->buffers[0], 1, _torusInstanceMetadata.instanceOffset);
-    RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], _torusMeshMetadata.indexOffset, VK_INDEX_TYPE_UINT16);
-    RB::DrawIndexed(recordState, _torusMeshMetadata.indexCount, _torusInstanceMetadata.instanceCount, 0, _torusMeshMetadata.vertexOffset);
+    // Static scene objects
+    RB::BindVertexBuffer(recordState, *_sceneInstanceBuffer->buffers[0], 1, 0);
+
+    // Cage
+    RB::DrawIndexed(
+        recordState, 
+        _cageMeshMetadata.indexCount, 
+        _cageInstanceMetadata.instanceCount, 
+        _cageMeshMetadata.indexOffset, 
+        0, 
+        _cageInstanceMetadata.instanceOffset
+    );
+
+    // Torus
+    RB::DrawIndexed(
+        recordState, 
+        _torusMeshMetadata.indexCount, 
+        _torusInstanceMetadata.instanceCount, 
+        _torusMeshMetadata.indexOffset, 
+        0,
+        _torusInstanceMetadata.instanceOffset
+    );
 
     _sceneRenderPass->End(recordState);
 
