@@ -2,8 +2,8 @@
 #define MATH_COMMON
 
 #define FORWARD_VEC3 vec3(0.0f, 0.0f, 1.0f)
-#define RIGHT_VEC3 vec3(1.0f, 0.0f, 0.0f);
-#define UP_VEC3 vec3(0.0f, 1.0f, 0.0f);
+#define RIGHT_VEC3 vec3(1.0f, 0.0f, 0.0f)
+#define UP_VEC3 vec3(0.0f, 1.0f, 0.0f)
 
 #define EPSILON 1e-6f
 

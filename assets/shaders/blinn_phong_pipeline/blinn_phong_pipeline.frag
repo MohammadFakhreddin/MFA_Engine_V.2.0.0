@@ -1,5 +1,3 @@
-#version 450
-
 layout(location = 0) in vec3 inWorldPosition;
 layout(location = 1) in vec3 inWorldNormal;
 layout(location = 2) in vec4 inColor;
@@ -15,7 +13,7 @@ layout(set = 0, binding = 0, std140) uniform CameraBuffer
     float placeholder;
 } camera;
 
-layout(set = 0, binding = 1, std140) uniform LightSourceBuffer
+layout(set = 1, binding = 0, std140) uniform LightSourceBuffer
 {
     vec3 direction;
     float ambientStrength;

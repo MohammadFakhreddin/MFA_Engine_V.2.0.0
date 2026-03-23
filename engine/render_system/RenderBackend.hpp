@@ -559,14 +559,16 @@ namespace MFA::RenderBackend
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         size_t bufferSize,
-        uint32_t count
+        uint32_t count,
+        VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
     );
 
     std::shared_ptr<RT::BufferGroup> CreateHostVisibleStorageBuffer(
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         VkDeviceSize bufferSize,
-        uint32_t count
+        uint32_t count,
+        VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     );
 
     std::shared_ptr<RT::BufferGroup> CreateStageBuffer(

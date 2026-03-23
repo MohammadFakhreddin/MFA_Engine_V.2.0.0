@@ -21,7 +21,7 @@ BlinnPhongPipeline::BlinnPhongPipeline(
 		mParams.maxSets
 	);
 
-	CreatePerRenderDescriptorSetLayout();
+	CreateDescriptorSetLayout();
 	CreatePipeline();
 }
 
@@ -30,7 +30,8 @@ BlinnPhongPipeline::BlinnPhongPipeline(
 BlinnPhongPipeline::~BlinnPhongPipeline()
 {
 	mPipeline = nullptr;
-	mPerPipelineDescriptorLayout = nullptr;
+	mCameraDescriptorLayout = nullptr;
+    mLightDescriptorLayout = nullptr;
 	mDescriptorPool = nullptr;
 }
 
@@ -59,33 +60,43 @@ void BlinnPhongPipeline::BindPipeline(RT::CommandRecordState& recordState) const
 
 //----------------------------------------------------------------------------------------------------------------------
 
-void BlinnPhongPipeline::CreatePerRenderDescriptorSetLayout()
+void BlinnPhongPipeline::CreateDescriptorSetLayout()
 {
-	std::vector<VkDescriptorSetLayoutBinding> bindings{};
+    {// Camera descriptor layout
+        std::vector<VkDescriptorSetLayoutBinding> bindings{};
 
-	// ViewProjection
-	VkDescriptorSetLayoutBinding modelViewProjectionBinding{
-		.binding = static_cast<uint32_t>(bindings.size()),
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-	};
-	bindings.emplace_back(modelViewProjectionBinding);
+        // ViewProjection
+        VkDescriptorSetLayoutBinding modelViewProjectionBinding{
+            .binding = static_cast<uint32_t>(bindings.size()),
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+        };
+        bindings.emplace_back(modelViewProjectionBinding);
 
-    // Light source
-    VkDescriptorSetLayoutBinding const lightSourceBinding{
-        .binding = static_cast<uint32_t>(bindings.size()),
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
-    };
-    bindings.emplace_back(lightSourceBinding);
+        mCameraDescriptorLayout = RB::CreateDescriptorSetLayout(
+            LogicalDevice::GetVkDevice(),
+            static_cast<uint8_t>(bindings.size()),
+            bindings.data()
+        );
+    }
+    {// Light source
+        std::vector<VkDescriptorSetLayoutBinding> bindings{};
 
-	mPerPipelineDescriptorLayout = RB::CreateDescriptorSetLayout(
-		LogicalDevice::GetVkDevice(),
-		static_cast<uint8_t>(bindings.size()),
-		bindings.data()
-	);
+        VkDescriptorSetLayoutBinding const lightSourceBinding{
+            .binding = static_cast<uint32_t>(bindings.size()),
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+        };
+        bindings.emplace_back(lightSourceBinding);
+
+        mLightDescriptorLayout = RB::CreateDescriptorSetLayout(
+            LogicalDevice::GetVkDevice(),
+            static_cast<uint8_t>(bindings.size()),
+            bindings.data()
+        );
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -95,14 +106,14 @@ void BlinnPhongPipeline::CreatePipeline()
 	// Vertex shader
 	{
 		bool success = Importer::CompileShaderToSPV(
-			Path::Get("shaders/shape_pipeline/BlinnPhongPipeline.vert.hlsl"),
-			Path::Get("shaders/shape_pipeline/BlinnPhongPipeline.vert.spv"),
+			Path::Get("shaders/blinn_phong_pipeline/blinn_phong_pipeline.vert"),
+			Path::Get("shaders/blinn_phong_pipeline/blinn_phong_pipeline.vert.spv"),
 			"vert"
 		);
 		MFA_ASSERT(success == true);
 	}
 	auto cpuVertexShader = Importer::ShaderFromSPV(
-		Path::Get("shaders/shape_pipeline/BlinnPhongPipeline.vert.spv"),
+		Path::Get("shaders/blinn_phong_pipeline/blinn_phong_pipeline.vert.spv"),
 		VK_SHADER_STAGE_VERTEX_BIT,
 		"main"
 	);
@@ -114,14 +125,14 @@ void BlinnPhongPipeline::CreatePipeline()
 	// Fragment shader
 	{
 		bool success = Importer::CompileShaderToSPV(
-			Path::Get("shaders/shape_pipeline/BlinnPhongPipeline.frag.hlsl"),
-			Path::Get("shaders/shape_pipeline/BlinnPhongPipeline.frag.spv"),
+			Path::Get("shaders/blinn_phong_pipeline/blinn_phong_pipeline.frag"),
+			Path::Get("shaders/blinn_phong_pipeline/blinn_phong_pipeline.frag.spv"),
 			"frag"
 		);
 		MFA_ASSERT(success == true);
 	}
 	auto cpuFragmentShader = Importer::ShaderFromSPV(
-		Path::Get("shaders/shape_pipeline/BlinnPhongPipeline.frag.spv"),
+		Path::Get("shaders/blinn_phong_pipeline/blinn_phong_pipeline.frag.spv"),
 		VK_SHADER_STAGE_FRAGMENT_BIT,
 		"main"
 	);
@@ -204,7 +215,7 @@ void BlinnPhongPipeline::CreatePipeline()
 	pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
 	pipelineOptions.polygonMode = mParams.polygonMode;
 
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{mPerPipelineDescriptorLayout->descriptorSetLayout};
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{mCameraDescriptorLayout->descriptorSetLayout, mLightDescriptorLayout->descriptorSetLayout};
 
 	const auto pipelineLayout = RB::CreatePipelineLayout(
 		LogicalDevice::GetVkDevice(),
@@ -233,50 +244,85 @@ void BlinnPhongPipeline::CreatePipeline()
 
 //----------------------------------------------------------------------------------------------------------------------
 
-RT::DescriptorSetGroup BlinnPhongPipeline::CreatePerRenderDescriptorSets(
-	const RT::BufferGroup & viewProjectionBuffer,
-    const RT::BufferGroup & lightSourceBuffer
-) const
+RT::DescriptorSetGroup BlinnPhongPipeline::CreateCameraDescriptorSets(const RT::BufferGroup &cameraBuffer) const
 {
-	auto const maxFramesPerFlight = LogicalDevice::GetMaxFramePerFlight();
-	auto descriptorSetGroup = RB::CreateDescriptorSet(
-		LogicalDevice::GetVkDevice(),
-		mDescriptorPool->descriptorPool,
-		mPerPipelineDescriptorLayout->descriptorSetLayout,
-		maxFramesPerFlight
-	);
+    auto descriptorSetGroup = RB::CreateDescriptorSet(
+        LogicalDevice::GetVkDevice(),
+        mDescriptorPool->descriptorPool,
+        mCameraDescriptorLayout->descriptorSetLayout,
+        cameraBuffer.buffers.size()
+    );
 
-	for (uint32_t frameIndex = 0; frameIndex < maxFramesPerFlight; ++frameIndex)
-	{
+    for (uint32_t bIdx = 0; bIdx < cameraBuffer.buffers.size(); ++bIdx)
+    {
 
-		auto const& descriptorSet = descriptorSetGroup.descriptorSets[frameIndex];
-		MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+        auto const &descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
 
-		DescriptorSetSchema descriptorSetSchema{ descriptorSet };
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
 
-		/////////////////////////////////////////////////////////////////
-		// Vertex shader
-		/////////////////////////////////////////////////////////////////
+        // ViewProjectionTransform
+        VkDescriptorBufferInfo viewProjBufferInfo{
+            .buffer = cameraBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = cameraBuffer.bufferSize,
+        };
+        descriptorSetSchema.AddUniformBuffer(&viewProjBufferInfo);
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
 
-		// ViewProjectionTransform
-		VkDescriptorBufferInfo viewProjBufferInfo{
-			.buffer = viewProjectionBuffer.buffers[frameIndex]->buffer,
-			.offset = 0,
-			.range = viewProjectionBuffer.bufferSize,
-		};
-		descriptorSetSchema.AddUniformBuffer(&viewProjBufferInfo);
+    return descriptorSetGroup;
+}
 
-		// LightSourceBuffer
-		VkDescriptorBufferInfo lightSourceBufferInfo{
-			.buffer = lightSourceBuffer.buffers[frameIndex]->buffer,
-			.offset = 0,
-			.range = lightSourceBuffer.bufferSize
-		};
-		descriptorSetSchema.AddUniformBuffer(&lightSourceBufferInfo);
-		descriptorSetSchema.UpdateDescriptorSets();
-	}
+//----------------------------------------------------------------------------------------------------------------------
 
-	return descriptorSetGroup;
+RT::DescriptorSetGroup BlinnPhongPipeline::CreateLightBufferDescriptorSets(const RT::BufferGroup &lightSourceBuffer) const
+{
+    auto descriptorSetGroup =
+        RB::CreateDescriptorSet(
+            LogicalDevice::GetVkDevice(),
+            mDescriptorPool->descriptorPool,
+            mLightDescriptorLayout->descriptorSetLayout,
+            lightSourceBuffer.buffers.size()
+        );
+
+    for (uint32_t bIdx = 0; bIdx < lightSourceBuffer.buffers.size(); ++bIdx)
+    {
+
+        auto const &descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
+
+        /////////////////////////////////////////////////////////////////
+        // Vertex shader
+        /////////////////////////////////////////////////////////////////
+
+        // LightSourceBuffer
+        VkDescriptorBufferInfo lightSourceBufferInfo{.buffer = lightSourceBuffer.buffers[bIdx]->buffer,
+                                                     .offset = 0,
+                                                     .range = lightSourceBuffer.bufferSize};
+        descriptorSetSchema.AddUniformBuffer(&lightSourceBufferInfo);
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
+
+    return descriptorSetGroup;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void BlinnPhongPipeline::BindCameraDescriptorSet(const MFA::RT::CommandRecordState &recordState,
+                                                         RT::DescriptorSetGroup const &descriptorSet) const
+{
+    RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)0, descriptorSet);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void BlinnPhongPipeline::BindLightDescriptorSet(const RT::CommandRecordState &recordState,
+                                                RT::DescriptorSetGroup const &descriptorSet) const
+{
+    RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)1, descriptorSet);
 }
 
 //----------------------------------------------------------------------------------------------------------------------

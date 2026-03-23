@@ -5,7 +5,6 @@
 #ifndef BOID_APP_HPP
 #define BOID_APP_HPP
 
-#include "AssetGLTF_Mesh.hpp"
 #include "BoidsUpdateFishPipeline.hpp"
 #include "BufferTracker.hpp"
 #include "RenderTypes.hpp"
@@ -14,13 +13,16 @@
 #include "UI.hpp"
 #include "camera/ObserverCamera.hpp"
 #include "BlinnPhongPipeline.hpp"
-
 #include "BoidsCollisionTriangle.hpp"
 #include "BoidsSimulationConstants.hpp"
 
 #include <SDL_events.h>
 #include <memory>
 #include <vector>
+
+#include <glm/glm.hpp>
+
+#include "AssetGLTF_Mesh.hpp"
 
 struct BlinnPhongLight
 {
@@ -154,12 +156,14 @@ private:
 
     InstanceMetadata _cageInstanceMetadata{};
     InstanceMetadata _torusInstanceMetadata{};
+    InstanceMetadata _fishInstanceMetadata{};
 
     // Rendering params
-    std::unique_ptr<MFA::BlinnPhongPipeline> _pBoidsShading{};
     std::unique_ptr<MFA::BlinnPhongPipeline> _pShadingGraphic{};
     std::unique_ptr<BoidsUpdateFishPipeline> _pUpdateFishCompute{};
-    MFA::RT::DescriptorSetGroup _dsCameraLighting{};
+    MFA::RT::DescriptorSetGroup _dsCamera{};
+    MFA::RT::DescriptorSetGroup _dsLighting{};
+
     MFA::RT::DescriptorSetGroup _dsFishbuffer{};
     MFA::RT::DescriptorSetGroup _dsColliders{};
     MFA::RT::DescriptorSetGroup _dsConstants{};
@@ -179,6 +183,7 @@ private:
         SimulationConstants simulation;
     };
     Config _config {};
+
 };
 
 

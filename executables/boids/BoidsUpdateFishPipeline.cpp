@@ -253,21 +253,20 @@ RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateStorageBufferDescriptorSet
     RT::DescriptorSetLayoutGroup const & descriptorSetLayout
 ) const
 {
-    auto const maxFramesPerFlight = LogicalDevice::GetMaxFramePerFlight();
     auto descriptorSetGroup = RB::CreateDescriptorSet(
         LogicalDevice::GetVkDevice(),
         mDescriptorPool->descriptorPool,
         descriptorSetLayout.descriptorSetLayout,
-        maxFramesPerFlight
+        bufferGroup.buffers.size()
     );
 
-    for (uint32_t frameIndex = 0; frameIndex < maxFramesPerFlight; ++frameIndex)
+    for (uint32_t bIdx = 0; bIdx < bufferGroup.buffers.size(); ++bIdx)
     {
-        auto const & descriptorSet = descriptorSetGroup.descriptorSets[frameIndex];
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
         MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
 
         VkDescriptorBufferInfo const bufferInfo{
-            .buffer = bufferGroup.buffers[frameIndex]->buffer,
+            .buffer = bufferGroup.buffers[bIdx]->buffer,
             .offset = 0,
             .range = bufferGroup.bufferSize
         };
@@ -287,21 +286,20 @@ RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateUniformBufferDescriptorSet
     RT::DescriptorSetLayoutGroup const & descriptorSetLayout
 ) const
 {
-    auto const maxFramesPerFlight = LogicalDevice::GetMaxFramePerFlight();
     auto descriptorSetGroup = RB::CreateDescriptorSet(
         LogicalDevice::GetVkDevice(),
         mDescriptorPool->descriptorPool,
         descriptorSetLayout.descriptorSetLayout,
-        maxFramesPerFlight
+        bufferGroup.buffers.size()
     );
 
-    for (uint32_t frameIndex = 0; frameIndex < maxFramesPerFlight; ++frameIndex)
+    for (uint32_t bIdx = 0; bIdx < bufferGroup.buffers.size(); ++bIdx)
     {
-        auto const & descriptorSet = descriptorSetGroup.descriptorSets[frameIndex];
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
         MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
 
         VkDescriptorBufferInfo const bufferInfo{
-            .buffer = bufferGroup.buffers[frameIndex]->buffer,
+            .buffer = bufferGroup.buffers[bIdx]->buffer,
             .offset = 0,
             .range = bufferGroup.bufferSize
         };

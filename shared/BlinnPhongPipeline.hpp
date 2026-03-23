@@ -82,22 +82,28 @@ namespace MFA
         void Reload() override;
 
         [[nodiscard]]
-        MFA::RT::DescriptorSetGroup CreatePerRenderDescriptorSets(
-            const MFA::RT::BufferGroup & viewProjectionBuffer,
-            const MFA::RT::BufferGroup & lightSourceBuffer
-        ) const;
+        RT::DescriptorSetGroup CreateCameraDescriptorSets(const RT::BufferGroup & cameraBuffer) const;
+
+        [[nodiscard]]
+        RT::DescriptorSetGroup CreateLightBufferDescriptorSets(const RT::BufferGroup & lightSourceBuffer) const;
+
+        void BindCameraDescriptorSet(const MFA::RT::CommandRecordState& recordState, RT::DescriptorSetGroup const & descriptorSet) const;
+
+        void BindLightDescriptorSet(const RT::CommandRecordState& recordState, RT::DescriptorSetGroup const & descriptorSet) const;
 
     private:
 
-        void CreatePerRenderDescriptorSetLayout();
+        void CreateDescriptorSetLayout();
 
         void CreatePipeline();
 
-        std::shared_ptr<MFA::RT::DescriptorPool> mDescriptorPool{};
+        std::shared_ptr<RT::DescriptorPool> mDescriptorPool{};
 
-        std::shared_ptr<MFA::RT::DescriptorSetLayoutGroup> mPerPipelineDescriptorLayout{};
+        std::shared_ptr<RT::DescriptorSetLayoutGroup> mCameraDescriptorLayout{};
 
-        std::shared_ptr<MFA::RT::PipelineGroup> mPipeline{};
+        std::shared_ptr<RT::DescriptorSetLayoutGroup> mLightDescriptorLayout{};
+
+        std::shared_ptr<RT::PipelineGroup> mPipeline{};
 
         VkRenderPass mRenderPass{};
 

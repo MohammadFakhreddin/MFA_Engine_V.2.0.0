@@ -2643,7 +2643,8 @@ namespace MFA::RenderBackend
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         size_t const bufferSize,
-        uint32_t const count
+        uint32_t const count,
+        VkBufferUsageFlags const usageFlags
     )
     {
 	    return CreateBufferGroup(
@@ -2651,7 +2652,7 @@ namespace MFA::RenderBackend
             physicalDevice,
 		    bufferSize,
 		    count,
-		    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		    usageFlags,
 		    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	    );
     }
@@ -2662,7 +2663,8 @@ namespace MFA::RenderBackend
         VkDevice device,
         VkPhysicalDevice physicalDevice,
         VkDeviceSize const bufferSize,
-        uint32_t const count
+        uint32_t const count,
+        VkBufferUsageFlags const usageFlags
     )
     {
 	    return CreateBufferGroup(
@@ -2670,7 +2672,7 @@ namespace MFA::RenderBackend
             physicalDevice,
 		    bufferSize,
 		    count,
-		    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		    usageFlags,
 		    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 	    );
     }
