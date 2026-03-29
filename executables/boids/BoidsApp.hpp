@@ -146,8 +146,10 @@ private:
     std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
     std::unique_ptr<MFA::LocalBufferTracker> _lightBufferTracker{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneVertexBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneInstanceBuffer{};               // One trick I can do is to push fish first into the buffer, Then when a new buffer is created I can add a render task to copy from old to the new buffer? :)
-    std::shared_ptr<MFA::RT::BufferGroup> _fishInstanceBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneModelsBuffer{};                 
+    std::shared_ptr<MFA::RT::BufferGroup> _fishModelsBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _fishMaterialsBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneMaterialsBuffer{};               
     std::shared_ptr<MFA::RT::BufferGroup> _materialBuffer{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneIndexBuffer{};
     std::array<std::shared_ptr<MFA::RT::GpuTexture>, 2> _materialTextures{};

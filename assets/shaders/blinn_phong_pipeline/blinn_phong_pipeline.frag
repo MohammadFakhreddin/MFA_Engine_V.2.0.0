@@ -1,7 +1,7 @@
 layout(location = 0) in vec3 inWorldPosition;
 layout(location = 1) in vec3 inWorldNormal;
-layout(location = 2) out vec2 inUV;
-layout(location = 3) out int inMaterialId;
+layout(location = 2) in vec2 inUV;
+layout(location = 3) flat in int inMaterialId;
 
 layout(location = 0) out vec4 outColor;
 
@@ -38,11 +38,10 @@ layout(set = 2, binding = 0) readonly buffer MaterialBuffer
 
 layout(set = 2, binding = 1) uniform sampler2D textures[8];
 
-// #define material materials[inMaterialId]
+#define material materials[inMaterialId]
 
 void main()
 {
-    Material material = materials[inMaterialId];
     vec4 albedo = material.albedo.rgba;
     float specularStrength = material.specularStrength;
     float shininess = material.shininess;

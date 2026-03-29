@@ -4,22 +4,26 @@
 struct Fish
 {
     int id;                         // Fish unique index, starts from 0
+    int pad0;
+    int pad1;
+    int pad2;
 
     vec3 rbPosition;
-
+    int pad3;
+    
     vec3 rbVelocity;
-    int placeholder0;
+    int pad4;
 
     vec3 rbForce;
-    int placeholder1;
+    int pad5;
 
     vec3 tPosition;
-    int placeholder2;
+    int pad6;
 
     vec4 tRotation;                 // Used for animation
 
     vec3 tScale;
-    int placeholder3;
+    int pad7;
 
     mat4 tLocalMat4;                // The default transform used to adjust the mesh
 };

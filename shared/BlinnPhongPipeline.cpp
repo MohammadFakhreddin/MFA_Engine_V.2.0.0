@@ -5,6 +5,7 @@
 #include "BedrockPath.hpp"
 #include "ImportShader.hpp"
 
+#include <algorithm>
 #include <array>
 
 using namespace MFA;
@@ -171,22 +172,6 @@ void BlinnPhongPipeline::CreatePipeline()
 
 	std::vector<RT::GpuShader const*> shaders{ gpuVertexShader.get(), gpuFragmentShader.get() };
 
-	std::vector<VkVertexInputBindingDescription> const bindingDescriptions
-	{
-	    VkVertexInputBindingDescription
-	    {
-			.binding = 0,
-			.stride = sizeof(Vertex),
-			.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-        },
-	    VkVertexInputBindingDescription
-        {
-            .binding = 1,
-            .stride = sizeof(Instance),
-            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
-        },
-	};
-
 	std::vector<VkVertexInputAttributeDescription> inputAttributeDescriptions{};
     // Vertex
 	// Position
@@ -269,8 +254,8 @@ void BlinnPhongPipeline::CreatePipeline()
 		LogicalDevice::GetVkDevice(),
 		static_cast<uint8_t>(shaders.size()),
 		shaders.data(),
-		bindingDescriptions.size(),
-		bindingDescriptions.data(),
+		mParams.bindingDescriptions.size(),
+		mParams.bindingDescriptions.data(),
 		static_cast<uint8_t>(inputAttributeDescriptions.size()),
 		inputAttributeDescriptions.data(),
 		surfaceCapabilities.currentExtent,

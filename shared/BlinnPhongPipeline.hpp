@@ -77,6 +77,7 @@ namespace MFA
             VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
             bool dynamicCullMode = false;
+            
             // Vertex
             uint32_t positionOffset = offsetof(Vertex, position);
             uint32_t positionBinding = 0;
@@ -90,6 +91,22 @@ namespace MFA
             uint32_t modelBinding = 1;
             uint32_t materialOffset = offsetof(Instance, material);
             uint32_t materialBinding = 1;
+
+            std::vector<VkVertexInputBindingDescription> const bindingDescriptions
+            {
+                VkVertexInputBindingDescription
+                {
+                    .binding = 0,
+                    .stride = sizeof(Vertex),
+                    .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+                },
+                VkVertexInputBindingDescription
+                {
+                    .binding = 1,
+                    .stride = sizeof(Instance),
+                    .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
+                },
+            };
         };
 
         explicit BlinnPhongPipeline(
