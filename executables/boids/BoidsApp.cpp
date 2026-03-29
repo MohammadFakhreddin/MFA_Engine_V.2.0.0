@@ -18,6 +18,7 @@
 #include "LogicalDevice.hpp"
 #include "RenderBackend.hpp"
 #include "camera/ArcballCamera.hpp"
+#include "ext/matrix_transform.hpp"
 #include "vulkan/vulkan_core.h"
 
 #include <cmath>
@@ -73,10 +74,11 @@ BoidsSimulationApp::BoidsSimulationApp()
     PrepareCamera();
     PrepareSimulationConstants();
     PrepareLighting();
-    PrepareFishes();
     PrepareScene();
     PreparePipelines();
-    PrepareDescriptorSets();
+    PrepareRenderDescriptorSets();
+    PrepareFishes();
+    PrepareComputeDescriptorSets();
 }
 
 //======================================================================================================================
@@ -209,9 +211,9 @@ void BoidsSimulationApp::PrepareCamera()
 
 void BoidsSimulationApp::PrepareFishes()
 {
-    auto const spawnBoids = [this]() -> std::vector<Fish>
+    auto const spawnBoids = [this]() -> std::vector<FishState>
     {
-        std::vector<Fish> boids{};
+        std::vector<FishState> boids{};
 
         float const spawnRadius = 5.0f;
 
@@ -233,7 +235,7 @@ void BoidsSimulationApp::PrepareFishes()
             {
                 for (int zIdx = 0; zIdx <= _config.fishZCount; ++zIdx)
                 {
-                    Fish boid{};
+                    FishState boid{};
                     boid.id = static_cast<int>(boids.size());
 
                     float const xPer = normalizedIndex(xIdx, _config.fishXCount);
@@ -247,6 +249,7 @@ void BoidsSimulationApp::PrepareFishes()
                     boid.rbPosition = glm::vec3{xPos, yPos, zPos};
                     boid.tPosition = boid.rbPosition;
                     boid.tRotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+                    boid.tScale = glm::vec3(0.025f);
 
                     auto const velX = Math::Random<float>(speedMin, speedMax);
                     auto const velY = Math::Random<float>(speedMin, speedMax);
@@ -254,7 +257,6 @@ void BoidsSimulationApp::PrepareFishes()
                     boid.rbVelocity = glm::vec3{velX, velY, velZ};
 
                     boid.tLocalMat4 = glm::identity<glm::mat4>();
-                    boid.tGlobalMat4 = glm::translate(glm::identity<glm::mat4>(), boid.tPosition);
                     
                     boids.emplace_back(boid);
                 }
@@ -269,59 +271,66 @@ void BoidsSimulationApp::PrepareFishes()
     _fishInstanceMetadata.instanceOffset = 0;
     _fishInstanceMetadata.instanceCount = static_cast<int>(boids.size());
 
-    size_t const bufferSize = sizeof(Fish) * _fishInstanceMetadata.instanceCount;
-    // As we rely on previous compute shader simulation result before lunching another compute pass, we cannot have more
-    // than one buffer. As a solution, I can use double buffering and update one while the other is readonly to reduce
-    // this dependency and improve parallelization.
-    if (_fishInstanceBuffer == nullptr || _fishInstanceBuffer->bufferSize < bufferSize)
+    std::vector<BlinnPhongPipeline::Instance> fishInstances{};
+    fishInstances.reserve(boids.size());
+    for (auto const & boid : boids)
     {
-        // TODO: Add a render task to hold old buffer for the necessary amount of time, TODO: We have to update the descriptor set
-        // if (_fishInstanceBuffer != nullptr)
-        // {
+        auto const model = glm::translate(glm::identity<glm::mat4>(), boid.tPosition) 
+            * glm::scale(glm::identity<glm::mat4>(), boid.tScale) 
+            * boid.tLocalMat4;
 
-        // }
-
-        _fishInstanceBuffer = RB::CreateLocalStorageBuffer(
-            LogicalDevice::GetVkDevice(),
-            LogicalDevice::GetPhysicalDevice(),
-            bufferSize,
-            2,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-        );
-
-        // TODO Update fish descriptorSet
+        fishInstances.emplace_back(BlinnPhongPipeline::Instance{
+            .model = model,
+            .material = 0
+        });
     }
 
-    std::shared_ptr const stageBuffer = RB::CreateStageBuffer(
-        LogicalDevice::GetVkDevice(),
-        LogicalDevice::GetPhysicalDevice(),
-        bufferSize,
-        1
-    );
+    auto const device = LogicalDevice::GetVkDevice();
+    auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
 
-    auto bufferTracker = std::make_shared<LocalBufferTracker>(
-        _fishInstanceBuffer,
-        stageBuffer,
-        Alias(boids.data(),
-        boids.size())
-    );
+    size_t const stateBufferSize = sizeof(FishState) * _fishInstanceMetadata.instanceCount;
+    size_t const instanceBufferSize = sizeof(BlinnPhongPipeline::Instance) * _fishInstanceMetadata.instanceCount;
 
-    std::shared_ptr<int> counter = std::make_shared<int>(
-        _fishInstanceBuffer->buffers.size() + LogicalDevice::GetMaxFramePerFlight()
-    );
-    LogicalDevice::AddRenderTask(
-        [stageBuffer, bufferTracker, counter](RT::CommandRecordState &recordState) -> bool
-        {
-            // This is an exception as we want to clear all buffers before the next dispatch.
-            while (bufferTracker->IsDirty())
-                bufferTracker->Update(recordState);
-            --(*counter);
-            if ((*counter) < 0)
+    if (_fishStateBuffer == nullptr || _fishStateBuffer->bufferSize < stateBufferSize)
+    {
+        _fishStateBuffer = RB::CreateLocalStorageBuffer(device, physicalDevice, stateBufferSize, 1);
+    }
+    if (_fishInstanceBuffer == nullptr || _fishInstanceBuffer->bufferSize < instanceBufferSize)
+    {
+        _fishInstanceBuffer = RB::CreateLocalStorageBuffer(
+            device,
+            physicalDevice,
+            instanceBufferSize,
+            1,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+        );
+    }
+    
+    auto const scheduleLocalUpload = [](std::shared_ptr<LocalBufferTracker> const & bufferTracker) -> void
+    {
+        auto remLifeTime =
+            std::make_shared<int>(bufferTracker->LocalBuffer().buffers.size() + LogicalDevice::GetMaxFramePerFlight());
+        LogicalDevice::AddRenderTask(
+            [bufferTracker, remLifeTime](RT::CommandRecordState & recordState) -> bool
             {
-                return false;
+                bufferTracker->Update(recordState);
+                (*remLifeTime)--;
+                return *remLifeTime > 0;
             }
-            return true;
-        });
+        );
+    };
+
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _fishStateBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, _fishStateBuffer->bufferSize, 1),
+        Alias(boids.data(), boids.size())
+    ));
+
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _fishInstanceBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, _fishInstanceBuffer->bufferSize, 1),
+        Alias(fishInstances.data(), fishInstances.size())
+    ));
 }
 
 //======================================================================================================================
@@ -433,10 +442,11 @@ void BoidsSimulationApp::PrepareScene()
     std::vector<BlinnPhongPipeline::Vertex> sceneVertices{};
     std::vector<AS::GLTF::Index> sceneIndices{};
     std::vector<BlinnPhongPipeline::Instance> sceneInstances{};
+    std::vector<BlinnPhongPipeline::Material> materials{};
     std::vector<CollisionTriangle> collisionTriangles{};
 
     auto const appendMesh = [&sceneVertices, &sceneIndices](std::shared_ptr<Importer::Model> const &model,
-                                                            MeshMetadata &metadata) -> void
+                                                            BufferMetadata &metadata) -> void
     {
         auto const &mesh = model->mesh;
         auto const vertexCount = mesh->GetVertexCount();
@@ -454,7 +464,8 @@ void BoidsSimulationApp::PrepareScene()
         for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
         {
             sceneVertices.emplace_back(BlinnPhongPipeline::Vertex{.position = vertices[vertexIndex].position,
-                                                                  .normal = vertices[vertexIndex].normal});
+                                                                  .normal = vertices[vertexIndex].normal,
+                                                                  .albedoUV = vertices[vertexIndex].baseColorUV});
         }
 
         for (uint32_t index = 0; index < indexCount; ++index)
@@ -559,21 +570,40 @@ void BoidsSimulationApp::PrepareScene()
         }
     }
 
+    materials.emplace_back(BlinnPhongPipeline::Material{
+        .albedo = glm::vec4(1.0f),
+        .specularStrength = 0.0f,
+        .shininess = 32.0f,
+        .albedoTexture = 0
+    });
+    materials.emplace_back(BlinnPhongPipeline::Material{
+        .albedo = glm::vec4(1.0f),
+        .specularStrength = 0.0f,
+        .shininess = 16.0f,
+        .albedoTexture = 1
+    });
+    materials.emplace_back(BlinnPhongPipeline::Material{
+        .albedo = glm::vec4(0.90f, 0.0f, 0.0f, 1.0f),
+        .specularStrength = 0.0f,
+        .shininess = 32.0f,
+        .albedoTexture = -1
+    });
+
     _cageInstanceMetadata.instanceOffset = static_cast<uint32_t>(sceneInstances.size());
     _cageInstanceMetadata.instanceCount = 1;
-    sceneInstances.emplace_back(BlinnPhongPipeline::Instance{.model = cageInstance,
-                                                             .color = glm::vec4(0.0f, 0.0f, 0.85f, 1.0f),
-                                                             .specularStrength = 0.0f,
-                                                             .shininess = 16});
+    sceneInstances.emplace_back(BlinnPhongPipeline::Instance{
+        .model = cageInstance,
+        .material = 1
+    });
 
     _torusInstanceMetadata.instanceOffset = static_cast<uint32_t>(sceneInstances.size());
     _torusInstanceMetadata.instanceCount = static_cast<uint32_t>(torusInstances.size());
     for (auto const &torusInstance : torusInstances)
     {
-        sceneInstances.emplace_back(BlinnPhongPipeline::Instance{.model = torusInstance,
-                                                                 .color = glm::vec4(0.90f, 0.0f, 0.0f, 1.0f),
-                                                                 .specularStrength = 0.0f,
-                                                                 .shininess = 32});
+        sceneInstances.emplace_back(BlinnPhongPipeline::Instance{
+            .model = torusInstance,
+            .material = 2
+        });
     }
 
     auto const cubeTriangles =
@@ -601,16 +631,61 @@ void BoidsSimulationApp::PrepareScene()
     MFA_ASSERT(sceneVertices.empty() == false);
     MFA_ASSERT(sceneIndices.empty() == false);
     MFA_ASSERT(sceneInstances.empty() == false);
+    MFA_ASSERT(materials.empty() == false);
     MFA_ASSERT(collisionTriangles.empty() == false);
 
     auto const device = LogicalDevice::GetVkDevice();
     auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
+
+    MFA_ASSERT(fishGltfModel->textures.empty() == false);
+    MFA_ASSERT(cubeGltfModel->textures.empty() == false);
+
+    {
+        auto commandBuffer = RB::BeginSingleTimeCommand(
+            device,
+            *LogicalDevice::GetGraphicCommandPool()
+        );
+
+        std::array<uint8_t, 1> const mipLevels{0};
+        auto [fishTexture, fishStageBuffer] = RB::CreateTexture(
+            *fishGltfModel->textures[0],
+            device,
+            physicalDevice,
+            commandBuffer,
+            static_cast<int>(mipLevels.size()),
+            const_cast<uint8_t *>(mipLevels.data())
+        );
+        auto [cageTexture, cageStageBuffer] = RB::CreateTexture(
+            *cubeGltfModel->textures[0],
+            device,
+            physicalDevice,
+            commandBuffer,
+            static_cast<int>(mipLevels.size()),
+            const_cast<uint8_t *>(mipLevels.data())
+        );
+
+        RB::EndAndSubmitSingleTimeCommand(
+            device,
+            *LogicalDevice::GetGraphicCommandPool(),
+            LogicalDevice::GetGraphicQueue(),
+            commandBuffer
+        );
+
+        _materialTextures[0] = std::move(fishTexture);
+        _materialTextures[1] = std::move(cageTexture);
+    }
 
     _sceneVertexBuffer = RB::CreateVertexBufferGroup(device, physicalDevice,
                                                      sizeof(BlinnPhongPipeline::Vertex) * sceneVertices.size(), 1);
 
     _sceneInstanceBuffer = RB::CreateVertexBufferGroup(device, physicalDevice,
                                                        sizeof(BlinnPhongPipeline::Instance) * sceneInstances.size(), 1);
+    _materialBuffer = RB::CreateLocalStorageBuffer(
+        device,
+        physicalDevice,
+        sizeof(BlinnPhongPipeline::Material) * materials.size(),
+        1
+    );
     {
         auto sceneIndexBuffer = RB::CreateBufferGroup(
             device, physicalDevice, sizeof(AS::GLTF::Index) * sceneIndices.size(), 1,
@@ -649,6 +724,11 @@ void BoidsSimulationApp::PrepareScene()
         Alias(sceneInstances.data(), sceneInstances.size())));
 
     scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
+        _materialBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, _materialBuffer->bufferSize, 1),
+        Alias(materials.data(), materials.size())));
+
+    scheduleLocalUpload(std::make_shared<LocalBufferTracker>(
         _sceneIndexBuffer,
         RB::CreateStageBuffer(device, physicalDevice, _sceneIndexBuffer->bufferSize, 1),
         Alias(sceneIndices.data(), sceneIndices.size())));
@@ -669,7 +749,7 @@ void BoidsSimulationApp::PreparePipelines()
 
 //======================================================================================================================
 
-void BoidsSimulationApp::PrepareDescriptorSets()
+void BoidsSimulationApp::PrepareRenderDescriptorSets()
 {
     MFA_ASSERT(_sceneCollisionTriangleBuffer != nullptr);
     _dsColliders = _pUpdateFishCompute->CreateCollisionTrianglesDescriptorSets(*_sceneCollisionTriangleBuffer);
@@ -685,8 +765,36 @@ void BoidsSimulationApp::PrepareDescriptorSets()
     MFA_ASSERT(_lightBufferTracker != nullptr);
     _dsLighting = _pShadingGraphic->CreateLightBufferDescriptorSets(_lightBufferTracker->LocalBuffer());
 
+    MFA_ASSERT(_materialBuffer != nullptr);
+    MFA_ASSERT(_materialTextures[0] != nullptr);
+    MFA_ASSERT(_materialTextures[1] != nullptr);
+    std::array<RT::GpuTexture, 2> materialTextures{
+        RT::GpuTexture(_materialTextures[0]->imageGroup, _materialTextures[0]->imageView),
+        RT::GpuTexture(_materialTextures[1]->imageGroup, _materialTextures[1]->imageView)
+    };
+    _dsMaterial = _pShadingGraphic->CreateMaterialDescriptorSets(
+        *_materialBuffer,
+        *_sampler,
+        materialTextures.size(),
+        materialTextures.data()
+    );
+
+}
+
+//======================================================================================================================
+
+void BoidsSimulationApp::PrepareComputeDescriptorSets()
+{
     MFA_ASSERT(_fishInstanceBuffer != nullptr);
-    _dsFishbuffer = _pUpdateFishCompute->CreateFishesDescriptorSets(*_fishInstanceBuffer);
+    MFA_ASSERT(_fishStateBuffer != nullptr);
+    if (_dsUpdateFish.has_value() == false)
+    {
+        _dsUpdateFish = _pUpdateFishCompute->CreateFishDescriptorSets(*_fishStateBuffer, *_fishInstanceBuffer);
+    }
+    else 
+    {
+        _pUpdateFishCompute->UpdateFishDescriptorSets(*_dsUpdateFish, *_fishStateBuffer, *_fishInstanceBuffer);
+    }
 }
 
 //======================================================================================================================
@@ -775,7 +883,6 @@ void BoidsSimulationApp::Update(float deltaTime)
 }
 
 //======================================================================================================================
-// TODO: Support for textures is missing
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
@@ -783,7 +890,7 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     UpdateBufferTrackers(recordState);
 
     // _pUpdateFishCompute->BindPipeline(recordState);
-    // _pUpdateFishCompute->BindFishes(recordState, _dsFishbuffer);
+    // _pUpdateFishCompute->BindFishes(recordState, *_dsUpdateFish);
     // _pUpdateFishCompute->BindCollisionTriangles(recordState, _dsColliders);
     // _pUpdateFishCompute->BindSimulationConstants(recordState, _dsConstants);
 
@@ -813,6 +920,7 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     _pShadingGraphic->BindPipeline(recordState);
     _pShadingGraphic->BindCameraDescriptorSet(recordState, _dsCamera);
     _pShadingGraphic->BindLightDescriptorSet(recordState, _dsLighting);
+    _pShadingGraphic->BindMaterialDescriptorSet(recordState, _dsMaterial);
 
     RB::SetFrontFace(recordState.commandBuffer, VK_FRONT_FACE_CLOCKWISE);
     RB::SetCullMode(recordState.commandBuffer, VK_CULL_MODE_BACK_BIT); 
@@ -820,22 +928,21 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     RB::BindVertexBuffer(recordState, *_sceneVertexBuffer->buffers[0], 0, 0);
     RB::BindIndexBuffer(recordState, *_sceneIndexBuffer->buffers[0], 0);    
 
-    // TODO: We either need a separte buffer or pipeline for fish (Binding mismatch)
     // Fish
-    // RB::BindVertexBuffer(
-    //     recordState, 
-    //     *_fishInstanceBuffer->buffers[recordState.frameIndex % _fishInstanceBuffer->buffers.size()], 
-    //     1, 
-    //     0
-    // );
-    // RB::DrawIndexed(
-    //     recordState, 
-    //     _fishMeshMetadata.indexCount, 
-    //     _fishInstanceMetadata.instanceCount, 
-    //     _fishMeshMetadata.indexOffset, 
-    //     0,
-    //     _fishInstanceMetadata.instanceOffset
-    // );
+    RB::BindVertexBuffer(
+        recordState, 
+        *_fishInstanceBuffer->buffers[recordState.frameIndex % _fishInstanceBuffer->buffers.size()], 
+        1, 
+        0
+    );
+    RB::DrawIndexed(
+        recordState, 
+        _fishMeshMetadata.indexCount, 
+        _fishInstanceMetadata.instanceCount, 
+        _fishMeshMetadata.indexOffset, 
+        0,
+        _fishInstanceMetadata.instanceOffset
+    );
 
     // Static scene objects
     RB::BindVertexBuffer(recordState, *_sceneInstanceBuffer->buffers[0], 1, 0);

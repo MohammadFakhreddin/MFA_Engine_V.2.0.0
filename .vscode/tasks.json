@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Active GLSL Shader to SPIR-V",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "ext=\"${fileExtname}\"; ext=\"${ext#.}\"; case \"$ext\" in vert|frag|comp|geom|tesc|tese|mesh|task|rgen|rchit|rahit|rmiss|rint|rcall) stage=\"$ext\" ;; *) echo \"Unsupported shader extension: ${fileExtname}\" >&2; exit 1 ;; esac; glslc -g -fshader-stage=\"$stage\" \"${file}\" -o \"${file}.spv\" -std=450core"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ]
+}

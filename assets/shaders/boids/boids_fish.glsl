@@ -22,8 +22,6 @@ struct Fish
     int placeholder3;
 
     mat4 tLocalMat4;                // The default transform used to adjust the mesh
-
-    mat4 tGlobalMat4;               // The global transform used for rendering
 };
 
 #endif

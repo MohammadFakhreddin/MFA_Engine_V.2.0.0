@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-struct Fish
+struct FishState
 {
     int id{};                       // Fish unique index, starts from 0
 
@@ -23,7 +23,5 @@ struct Fish
     int placeholder3{};
 
     glm::mat4 tLocalMat4{1.0f};     // The default transform used to adjust the mesh
-
-    glm::mat4 tGlobalMat4{1.0f};    // The global transform used for rendering
 };
-static_assert(sizeof(Fish) % 16 == 0);
+static_assert(sizeof(FishState) % 16 == 0);

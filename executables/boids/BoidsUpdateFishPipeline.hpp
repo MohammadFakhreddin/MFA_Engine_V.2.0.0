@@ -55,19 +55,26 @@ public:
     ) const;
 
     [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateFishesDescriptorSets(
-        MFA::RT::BufferGroup const & fishBuffer
+    MFA::RT::DescriptorSetGroup CreateFishDescriptorSets(
+        MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+        MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
+    ) const;
+
+    void UpdateFishDescriptorSets(
+        MFA::RT::DescriptorSetGroup & descriptorSetGroup,
+        MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+        MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
     ) const;
 
     [[nodiscard]]
     MFA::RT::DescriptorSetGroup CreateCollisionTrianglesDescriptorSets(
-        MFA::RT::BufferGroup const & collisionTriangleBuffer
-    ) const;
+        MFA::RT::BufferGroup const & collisionTriangleBuffer                // Collision triangle buffer
+    );
 
     [[nodiscard]]
     MFA::RT::DescriptorSetGroup CreateSimulationConstantsDescriptorSets(
-        MFA::RT::BufferGroup const & simulationConstantsBuffer
-    ) const;
+        MFA::RT::BufferGroup const & simulationConstantsBuffer              // Simulation constants buffer
+    );
 
     void Reload() override;
 
@@ -76,18 +83,6 @@ private:
     void CreateDescriptorSetLayouts();
 
     void CreatePipeline();
-
-    [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateStorageBufferDescriptorSets(
-        MFA::RT::BufferGroup const & bufferGroup,
-        MFA::RT::DescriptorSetLayoutGroup const & descriptorSetLayout
-    ) const;
-
-    [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateUniformBufferDescriptorSets(
-        MFA::RT::BufferGroup const & bufferGroup,
-        MFA::RT::DescriptorSetLayoutGroup const & descriptorSetLayout
-    ) const;
 
     std::shared_ptr<MFA::RT::DescriptorPool> mDescriptorPool{};
 

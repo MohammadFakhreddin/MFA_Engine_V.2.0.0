@@ -5,6 +5,8 @@
 #include "BedrockPath.hpp"
 #include "ImportShader.hpp"
 
+#include <array>
+
 using namespace MFA;
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -18,7 +20,7 @@ BlinnPhongPipeline::BlinnPhongPipeline(
 	mRenderPass = renderPass;
 	mDescriptorPool = RB::CreateDescriptorPool(
 		LogicalDevice::GetVkDevice(),
-		mParams.maxSets
+		mParams.maxSets * (TextureCount + 2u)
 	);
 
 	CreateDescriptorSetLayout();
@@ -32,6 +34,7 @@ BlinnPhongPipeline::~BlinnPhongPipeline()
 	mPipeline = nullptr;
 	mCameraDescriptorLayout = nullptr;
     mLightDescriptorLayout = nullptr;
+    mMaterialDescriptorLayout = nullptr;
 	mDescriptorPool = nullptr;
 }
 
@@ -92,6 +95,31 @@ void BlinnPhongPipeline::CreateDescriptorSetLayout()
         bindings.emplace_back(lightSourceBinding);
 
         mLightDescriptorLayout = RB::CreateDescriptorSetLayout(
+            LogicalDevice::GetVkDevice(),
+            static_cast<uint8_t>(bindings.size()),
+            bindings.data()
+        );
+    }
+    {// Material
+        std::vector<VkDescriptorSetLayoutBinding> bindings{};
+
+        VkDescriptorSetLayoutBinding const materialBufferBinding{
+            .binding = static_cast<uint32_t>(bindings.size()),
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+        };
+        bindings.emplace_back(materialBufferBinding);
+
+        VkDescriptorSetLayoutBinding const texturesBinding{
+            .binding = static_cast<uint32_t>(bindings.size()),
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = TextureCount,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+        };
+        bindings.emplace_back(texturesBinding);
+
+        mMaterialDescriptorLayout = RB::CreateDescriptorSetLayout(
             LogicalDevice::GetVkDevice(),
             static_cast<uint8_t>(bindings.size()),
             bindings.data()
@@ -175,6 +203,13 @@ void BlinnPhongPipeline::CreatePipeline()
 		.format = VK_FORMAT_R32G32B32_SFLOAT,
 		.offset = mParams.normalOffset,
 	});
+	// UV
+	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
+		.location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
+		.binding = mParams.uvBinding,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = mParams.uvOffset,
+	});
 	// Instance
 	for (int i = 0; i < 4; ++i)
 	{
@@ -185,27 +220,13 @@ void BlinnPhongPipeline::CreatePipeline()
             .offset = mParams.modelOffset + static_cast<uint32_t>(i * sizeof(glm::vec4))
         });
 	}
-	// Color
+	// Material id
 	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
 	    .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = mParams.colorBinding,
-        .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-        .offset = mParams.colorOffset
-	});
-    // Specular strength
-	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = mParams.specularStrengthBinding,
-        .format = VK_FORMAT_R32_SFLOAT,
-        .offset = mParams.specularStrengthOffset
-    });
-    // Shininess
-	inputAttributeDescriptions.emplace_back(VkVertexInputAttributeDescription{
-        .location = static_cast<uint32_t>(inputAttributeDescriptions.size()),
-        .binding = mParams.shininessBinding,
+        .binding = mParams.materialBinding,
         .format = VK_FORMAT_R32_SINT,
-        .offset = mParams.shininessOffset
-    });
+        .offset = mParams.materialOffset
+	});
 
 	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
 	std::vector<VkDynamicState> dynamicStates{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
@@ -228,7 +249,11 @@ void BlinnPhongPipeline::CreatePipeline()
 	pipelineOptions.colorBlendAttachments.blendEnable = VK_TRUE;
 	pipelineOptions.polygonMode = mParams.polygonMode;
 
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{mCameraDescriptorLayout->descriptorSetLayout, mLightDescriptorLayout->descriptorSetLayout};
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
+        mCameraDescriptorLayout->descriptorSetLayout,
+        mLightDescriptorLayout->descriptorSetLayout,
+        mMaterialDescriptorLayout->descriptorSetLayout
+    };
 
 	const auto pipelineLayout = RB::CreatePipelineLayout(
 		LogicalDevice::GetVkDevice(),
@@ -324,6 +349,61 @@ RT::DescriptorSetGroup BlinnPhongPipeline::CreateLightBufferDescriptorSets(const
 
 //----------------------------------------------------------------------------------------------------------------------
 
+RT::DescriptorSetGroup BlinnPhongPipeline::CreateMaterialDescriptorSets(
+    RT::BufferGroup const & materialBuffer,
+    RT::SamplerGroup const & sampler,
+    size_t const textureCount,
+    RT::GpuTexture const * textures
+) const
+{
+    MFA_ASSERT(textureCount <= TextureCount);
+    MFA_ASSERT(textureCount == 0 || textures != nullptr);
+
+    auto descriptorSetGroup =
+        RB::CreateDescriptorSet(
+            LogicalDevice::GetVkDevice(),
+            mDescriptorPool->descriptorPool,
+            mMaterialDescriptorLayout->descriptorSetLayout,
+            materialBuffer.buffers.size()
+        );
+
+    std::array<VkDescriptorImageInfo, TextureCount> imageInfos{};
+    for (size_t textureIndex = 0; textureIndex < TextureCount; ++textureIndex)
+    {
+        auto const & texture = textures[textureIndex < textureCount ? textureIndex : textureCount - 1];
+        MFA_ASSERT(texture.imageView != nullptr);
+        imageInfos[textureIndex] = VkDescriptorImageInfo{
+            .sampler = sampler.sampler,
+            .imageView = texture.imageView->imageView,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+    }
+    
+    for (uint32_t bIdx = 0; bIdx < materialBuffer.buffers.size(); ++bIdx)
+    {
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
+
+        VkDescriptorBufferInfo materialBufferInfo{
+            .buffer = materialBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = materialBuffer.bufferSize,
+        };
+        descriptorSetSchema.AddStorageBuffer(&materialBufferInfo);
+        if (textureCount > 0)
+        {
+            descriptorSetSchema.AddCombinedImageSampler(imageInfos.data(), TextureCount);
+        }
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
+
+    return descriptorSetGroup;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
 void BlinnPhongPipeline::BindCameraDescriptorSet(const MFA::RT::CommandRecordState &recordState,
                                                          RT::DescriptorSetGroup const &descriptorSet) const
 {
@@ -336,6 +416,14 @@ void BlinnPhongPipeline::BindLightDescriptorSet(const RT::CommandRecordState &re
                                                 RT::DescriptorSetGroup const &descriptorSet) const
 {
     RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)1, descriptorSet);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void BlinnPhongPipeline::BindMaterialDescriptorSet(const RT::CommandRecordState &recordState,
+                                                   RT::DescriptorSetGroup const &descriptorSet) const
+{
+    RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)2, descriptorSet);
 }
 
 //----------------------------------------------------------------------------------------------------------------------

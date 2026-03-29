@@ -16,14 +16,15 @@
 #include "BlinnPhongPipeline.hpp"
 #include "BoidsCollisionTriangle.hpp"
 #include "BoidsSimulationConstants.hpp"
-
-#include <SDL_events.h>
-#include <memory>
-#include <vector>
+#include "AssetGLTF_Mesh.hpp"
 
 #include <glm/glm.hpp>
 
-#include "AssetGLTF_Mesh.hpp"
+#include <SDL_events.h>
+#include <array>
+#include <memory>
+#include <optional>
+#include <vector>
 
 struct BlinnPhongLight
 {
@@ -69,6 +70,7 @@ private:
 
     void PrepareLighting();
 
+    // This function must be called only when the device is idle
     void PrepareFishes();
 
     [[nodiscard]]
@@ -89,7 +91,9 @@ private:
 
     void PreparePipelines();
 
-    void PrepareDescriptorSets();
+    void PrepareRenderDescriptorSets();
+
+    void PrepareComputeDescriptorSets();
 
     void UpdateCamera(float deltaTime);
 
@@ -127,14 +131,10 @@ private:
 
     int _activeImageIndex{};
 
-    struct MeshMetadata
+    struct BufferMetadata
     {
         uint32_t indexOffset{};
         uint32_t indexCount{};
-    };
-
-    struct InstanceMetadata
-    {
         uint32_t instanceOffset{};
         uint32_t instanceCount{};
     };
@@ -142,31 +142,40 @@ private:
     // TODO: Replace ArcballCamera with ObserverCamera
     // std::unique_ptr<MFA::ObserverCamera> _camera{};
     std::unique_ptr<MFA::ArcballCamera> _camera{};
+    // Rendering buffers
     std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _fishStorageBufferTracker{};
-    std::unique_ptr<MFA::LocalBufferTracker> _simulationConstantsBufferTracker{};
     std::unique_ptr<MFA::LocalBufferTracker> _lightBufferTracker{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneVertexBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _sceneInstanceBuffer{};               // One trick I can do is to push fish first into the buffer, Then when a new buffer is created I can add a render task to copy from old to the new buffer? :)
     std::shared_ptr<MFA::RT::BufferGroup> _fishInstanceBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneInstanceBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _materialBuffer{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneIndexBuffer{};
+    std::array<std::shared_ptr<MFA::RT::GpuTexture>, 2> _materialTextures{};
+    // Compute buffers
+    std::unique_ptr<MFA::LocalBufferTracker> _simulationConstantsBufferTracker{};
+    std::shared_ptr<MFA::RT::BufferGroup> _fishStateBuffer{};
     std::shared_ptr<MFA::RT::BufferGroup> _sceneCollisionTriangleBuffer{};
 
-    MeshMetadata _fishMeshMetadata{};
-    MeshMetadata _cageMeshMetadata{};
-    MeshMetadata _torusMeshMetadata{};
+    BufferMetadata _fishMeshMetadata{};
+    BufferMetadata _fishInstanceMetadata{};
+    BufferMetadata _fishMaterialMetadata{};
 
-    InstanceMetadata _cageInstanceMetadata{};
-    InstanceMetadata _torusInstanceMetadata{};
-    InstanceMetadata _fishInstanceMetadata{};
+    BufferMetadata _cageMeshMetadata{};
+    BufferMetadata _cageInstanceMetadata{};
+    BufferMetadata _cageMaterialMetadata{};
+
+    BufferMetadata _torusMeshMetadata{};
+    BufferMetadata _torusInstanceMetadata{};
+    BufferMetadata _torusMaterialMetadata{};
 
     // Rendering params
     std::unique_ptr<MFA::BlinnPhongPipeline> _pShadingGraphic{};
     std::unique_ptr<BoidsUpdateFishPipeline> _pUpdateFishCompute{};
     MFA::RT::DescriptorSetGroup _dsCamera{};
     MFA::RT::DescriptorSetGroup _dsLighting{};
+    MFA::RT::DescriptorSetGroup _dsMaterial{};
 
-    MFA::RT::DescriptorSetGroup _dsFishbuffer{};
+    std::optional<MFA::RT::DescriptorSetGroup> _dsUpdateFish{};
     MFA::RT::DescriptorSetGroup _dsColliders{};
     MFA::RT::DescriptorSetGroup _dsConstants{};
 

@@ -1,4 +1,5 @@
 #include "BoidsUpdateFishPipeline.hpp"
+#include <array>
 
 #include "BedrockAssert.hpp"
 #include "BedrockPath.hpp"
@@ -6,6 +7,7 @@
 #include "ImportShader.hpp"
 #include "LogicalDevice.hpp"
 #include "RenderBackend.hpp"
+#include "vulkan/vulkan_core.h"
 
 using namespace MFA;
 
@@ -110,35 +112,153 @@ void BoidsUpdateFishPipeline::SetPushConstants(
 
 //----------------------------------------------------------------------------------------------------------------------
 
-RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateFishesDescriptorSets(
-    RT::BufferGroup const & fishBuffer
+RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateFishDescriptorSets(
+    MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+    MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
 ) const
 {
-    return CreateStorageBufferDescriptorSets(fishBuffer, *mFishDescriptorSetLayout);
+    MFA_ASSERT(stateBuffer.buffers.size() == instanceBuffer.buffers.size());
+    auto const bufferCount = stateBuffer.buffers.size();
+
+    auto descriptorSetGroup = RB::CreateDescriptorSet(
+        LogicalDevice::GetVkDevice(),
+        mDescriptorPool->descriptorPool,
+        mFishDescriptorSetLayout->descriptorSetLayout,
+        bufferCount
+    );
+
+    for (uint32_t bIdx = 0; bIdx < bufferCount; ++bIdx)
+    {
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+
+        auto const bufferInfos = std::to_array<VkDescriptorBufferInfo>({
+        {
+            .buffer = stateBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = stateBuffer.bufferSize
+        },
+        {
+            .buffer = instanceBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = instanceBuffer.bufferSize
+        }});
+
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
+
+        for (auto const & bufferInfo : bufferInfos)
+        {
+            descriptorSetSchema.AddStorageBuffer(&bufferInfo);
+        }
+
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
+    return descriptorSetGroup;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void BoidsUpdateFishPipeline::UpdateFishDescriptorSets(
+    MFA::RT::DescriptorSetGroup & descriptorSetGroup,
+    MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+    MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
+) const
+{
+    MFA_ASSERT(stateBuffer.buffers.size() == instanceBuffer.buffers.size());
+    MFA_ASSERT(descriptorSetGroup.descriptorSets.size() == stateBuffer.buffers.size());
+
+    auto const bufferCount = stateBuffer.buffers.size();
+
+    for (uint32_t bIdx = 0; bIdx < bufferCount; ++bIdx)
+    {
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+
+        auto const bufferInfos = std::to_array<VkDescriptorBufferInfo>({
+        {
+            .buffer = stateBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = stateBuffer.bufferSize
+        },
+        {
+            .buffer = instanceBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = instanceBuffer.bufferSize
+        }});
+
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
+
+        for (auto const & bufferInfo : bufferInfos)
+        {
+            descriptorSetSchema.AddStorageBuffer(&bufferInfo);
+        }
+
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
 RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateCollisionTrianglesDescriptorSets(
     RT::BufferGroup const & collisionTriangleBuffer
-) const
+)
 {
-    return CreateStorageBufferDescriptorSets(
-        collisionTriangleBuffer,
-        *mCollisionTriangleDescriptorSetLayout
+    auto descriptorSetGroup = RB::CreateDescriptorSet(
+        LogicalDevice::GetVkDevice(),
+        mDescriptorPool->descriptorPool,
+        mCollisionTriangleDescriptorSetLayout->descriptorSetLayout,
+        collisionTriangleBuffer.buffers.size()
     );
+
+    for (uint32_t bIdx = 0; bIdx < collisionTriangleBuffer.buffers.size(); ++bIdx)
+    {
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+
+        VkDescriptorBufferInfo const bufferInfo{
+            .buffer = collisionTriangleBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = collisionTriangleBuffer.bufferSize
+        };
+
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
+        descriptorSetSchema.AddStorageBuffer(&bufferInfo);
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
+
+    return descriptorSetGroup;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
 RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateSimulationConstantsDescriptorSets(
     RT::BufferGroup const & simulationConstantsBuffer
-) const
+)
 {
-    return CreateUniformBufferDescriptorSets(
-        simulationConstantsBuffer,
-        *mSimulationConstantsDescriptorSetLayout
+    auto descriptorSetGroup = RB::CreateDescriptorSet(
+        LogicalDevice::GetVkDevice(),
+        mDescriptorPool->descriptorPool,
+        mSimulationConstantsDescriptorSetLayout->descriptorSetLayout,
+        simulationConstantsBuffer.buffers.size()
     );
+
+    for (uint32_t bIdx = 0; bIdx < simulationConstantsBuffer.buffers.size(); ++bIdx)
+    {
+        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
+        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
+
+        VkDescriptorBufferInfo const bufferInfo{
+            .buffer = simulationConstantsBuffer.buffers[bIdx]->buffer,
+            .offset = 0,
+            .range = simulationConstantsBuffer.bufferSize
+        };
+
+        DescriptorSetSchema descriptorSetSchema{descriptorSet};
+        descriptorSetSchema.AddUniformBuffer(&bufferInfo);
+        descriptorSetSchema.UpdateDescriptorSets();
+    }
+
+    return descriptorSetGroup;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -153,17 +273,25 @@ void BoidsUpdateFishPipeline::Reload()
 void BoidsUpdateFishPipeline::CreateDescriptorSetLayouts()
 {
     {
-        VkDescriptorSetLayoutBinding binding{
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
-        };
+        auto bindings = std::to_array<VkDescriptorSetLayoutBinding>({
+            VkDescriptorSetLayoutBinding {                      // Fish states
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
+            },
+            {                                                   // Fish instances
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
+            }
+        });
 
         mFishDescriptorSetLayout = RB::CreateDescriptorSetLayout(
             LogicalDevice::GetVkDevice(),
-            1,
-            &binding
+            bindings.size(),
+            bindings.data()
         );
     }
 
@@ -247,67 +375,3 @@ void BoidsUpdateFishPipeline::CreatePipeline()
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-
-RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateStorageBufferDescriptorSets(
-    RT::BufferGroup const & bufferGroup,
-    RT::DescriptorSetLayoutGroup const & descriptorSetLayout
-) const
-{
-    auto descriptorSetGroup = RB::CreateDescriptorSet(
-        LogicalDevice::GetVkDevice(),
-        mDescriptorPool->descriptorPool,
-        descriptorSetLayout.descriptorSetLayout,
-        bufferGroup.buffers.size()
-    );
-
-    for (uint32_t bIdx = 0; bIdx < bufferGroup.buffers.size(); ++bIdx)
-    {
-        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
-        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
-
-        VkDescriptorBufferInfo const bufferInfo{
-            .buffer = bufferGroup.buffers[bIdx]->buffer,
-            .offset = 0,
-            .range = bufferGroup.bufferSize
-        };
-
-        DescriptorSetSchema descriptorSetSchema{descriptorSet};
-        descriptorSetSchema.AddStorageBuffer(&bufferInfo);
-        descriptorSetSchema.UpdateDescriptorSets();
-    }
-
-    return descriptorSetGroup;
-}
-
-//----------------------------------------------------------------------------------------------------------------------
-
-RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateUniformBufferDescriptorSets(
-    RT::BufferGroup const & bufferGroup,
-    RT::DescriptorSetLayoutGroup const & descriptorSetLayout
-) const
-{
-    auto descriptorSetGroup = RB::CreateDescriptorSet(
-        LogicalDevice::GetVkDevice(),
-        mDescriptorPool->descriptorPool,
-        descriptorSetLayout.descriptorSetLayout,
-        bufferGroup.buffers.size()
-    );
-
-    for (uint32_t bIdx = 0; bIdx < bufferGroup.buffers.size(); ++bIdx)
-    {
-        auto const & descriptorSet = descriptorSetGroup.descriptorSets[bIdx];
-        MFA_ASSERT(descriptorSet != VK_NULL_HANDLE);
-
-        VkDescriptorBufferInfo const bufferInfo{
-            .buffer = bufferGroup.buffers[bIdx]->buffer,
-            .offset = 0,
-            .range = bufferGroup.bufferSize
-        };
-
-        DescriptorSetSchema descriptorSetSchema{descriptorSet};
-        descriptorSetSchema.AddUniformBuffer(&bufferInfo);
-        descriptorSetSchema.UpdateDescriptorSets();
-    }
-
-    return descriptorSetGroup;
-}

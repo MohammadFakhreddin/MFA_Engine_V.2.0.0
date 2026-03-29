@@ -11,13 +11,22 @@
 #define FLAG_DEBUG_MODE          (1u << 3) // bit 3
 
 #define myFish fishes[myIndex]
+#define myModel models[myIndex]
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 // TODO: Check if we would face issues if we write forces in the same buffer we read from.
-layout(set = 0, binding = 0, std430) buffer FishBuffer
+
+// Fish state is stored here
+layout(set = 0, binding = 0, std430) buffer FishStateBuffer
 {
     Fish fishes[];
+};
+
+// Fish transform is stored here
+layout(set=0,  binding = 0, std430) buffer FishInstanceBuffer
+{
+    mat4 models[];
 };
 
 layout(set = 1, binding = 0, std430) readonly buffer CollisionTriangleBuffer
@@ -352,7 +361,7 @@ void UpdateTransform(uint myIndex)
         }
     }
 
-    myFish.tGlobalMat4 =
+    myModel =
         Math_TranslateToMat4(myFish.tPosition) *
         Math_QuatToMat4(myFish.tRotation) *
         Math_ScaleToMat4(myFish.tScale) *

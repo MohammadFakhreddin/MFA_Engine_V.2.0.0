@@ -1,7 +1,9 @@
 #pragma once
 
-#include "RenderTypes.hpp"
+#include <vulkan/vulkan_core.h>
+
 #include <cstdint>
+#include <vector>
 
 namespace MFA {
 
