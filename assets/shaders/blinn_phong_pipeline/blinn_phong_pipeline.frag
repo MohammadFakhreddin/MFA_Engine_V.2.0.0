@@ -28,7 +28,7 @@ struct Material
     float specularStrength;
     float shininess;
     int albedoTexture;
-    int placeholder0;
+    int enableLighting;
 };
 
 layout(set = 2, binding = 0) readonly buffer MaterialBuffer
@@ -43,33 +43,40 @@ layout(set = 2, binding = 1) uniform sampler2D textures[8];
 void main()
 {
     vec4 albedo = material.albedo.rgba;
-    float specularStrength = material.specularStrength;
-    float shininess = material.shininess;
     int albedoTexture = material.albedoTexture;
-
-    vec3 fragNormal = normalize(inWorldNormal);
-    vec3 lightDir = -normalize(light.direction);
-    vec3 lightColor = light.color;
-
-    float diffuseDot = dot(lightDir, fragNormal);
-    vec3 ambient = light.ambientStrength * lightColor;
-    vec3 diffuse = max(diffuseDot, 0.0) * lightColor;
-
-    vec3 viewDir = normalize(camera.position - inWorldPosition);
-    vec3 reflectDir = reflect(-lightDir, fragNormal);
-
-    vec3 specular = vec3(0.0);
-    if (diffuseDot > 0.0)
-    {
-        specular = specularStrength
-            * pow(max(dot(viewDir, reflectDir), 0.0), float(shininess))
-            * lightColor;
-    }
-
     if (albedoTexture >= 0)
     {
         albedo *= texture(textures[albedoTexture], inUV).rgba;
     }
 
-    outColor = vec4(ambient + diffuse + specular, 1.0) * albedo;
+    if (material.enableLighting == 1)
+    {
+        float specularStrength = material.specularStrength;
+        float shininess = material.shininess;
+        
+        vec3 fragNormal = normalize(inWorldNormal);
+        vec3 lightDir = -normalize(light.direction);
+        vec3 lightColor = light.color;
+
+        float diffuseDot = dot(lightDir, fragNormal);
+        vec3 ambient = light.ambientStrength * lightColor;
+        vec3 diffuse = max(diffuseDot, 0.0) * lightColor;
+
+        vec3 viewDir = normalize(camera.position - inWorldPosition);
+        vec3 reflectDir = reflect(-lightDir, fragNormal);
+
+        vec3 specular = vec3(0.0);
+        if (diffuseDot > 0.0)
+        {
+            specular = specularStrength
+                * pow(max(dot(viewDir, reflectDir), 0.0), float(shininess))
+                * lightColor;
+        }
+        
+        outColor = vec4(ambient + diffuse + specular, 1.0) * albedo;
+    }
+    else
+    {
+        outColor = albedo;
+    }
 }

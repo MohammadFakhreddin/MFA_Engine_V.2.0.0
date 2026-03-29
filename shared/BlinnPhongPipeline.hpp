@@ -36,14 +36,14 @@ namespace MFA
             float specularStrength = 1.0f;
             float shininess = 32.0f;
             int32_t albedoTexture = -1;
-            int32_t placeholder0 = -1;
+            int32_t enableLighting = 1;
         };
 
         static_assert(sizeof(Material) == 32);
         static_assert(offsetof(Material, specularStrength) == 16);
         static_assert(offsetof(Material, shininess) == 20);
         static_assert(offsetof(Material, albedoTexture) == 24);
-        static_assert(offsetof(Material, placeholder0) == 28);
+        static_assert(offsetof(Material, enableLighting) == 28);
 
         struct Camera
         {

@@ -255,7 +255,7 @@ void BoidsSimulationApp::PrepareFishes()
                     auto const velY = Math::Random<float>(speedMin, speedMax);
                     auto const velZ = Math::Random<float>(speedMin, speedMax);
                     boid.rbVelocity = glm::vec3{velX, velY, velZ};
-
+                    
                     boid.tLocalMat4 = glm::identity<glm::mat4>();
                     
                     boids.emplace_back(boid);
@@ -587,18 +587,22 @@ void BoidsSimulationApp::PrepareScene()
         }
     }
 
+    // Fish
     materials.emplace_back(BlinnPhongPipeline::Material{
         .albedo = glm::vec4(1.0f),
         .specularStrength = 0.0f,
         .shininess = 32.0f,
         .albedoTexture = 0
     });
+    // Cage
     materials.emplace_back(BlinnPhongPipeline::Material{
         .albedo = glm::vec4(1.0f),
         .specularStrength = 0.0f,
         .shininess = 16.0f,
-        .albedoTexture = 1
+        .albedoTexture = 1,
+        .enableLighting = 0
     });
+    // Torus
     materials.emplace_back(BlinnPhongPipeline::Material{
         .albedo = glm::vec4(0.90f, 0.0f, 0.0f, 1.0f),
         .specularStrength = 0.0f,
