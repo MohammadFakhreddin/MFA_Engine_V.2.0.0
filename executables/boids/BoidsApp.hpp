@@ -197,6 +197,7 @@ private:
     };
     Config _config {};
 
+    float _resTime = 0.0f;
 };
 
 

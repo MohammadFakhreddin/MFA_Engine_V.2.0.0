@@ -942,6 +942,8 @@ void BoidsSimulationApp::Update(float deltaTime)
     UpdateCamera(deltaTime);
 
     _ui->Update();
+
+    _resTime += deltaTime;
 }
 
 //======================================================================================================================
@@ -956,7 +958,7 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     _pUpdateFishCompute->BindCollisionTriangles(recordState, _dsColliders);
     _pUpdateFishCompute->BindSimulationConstants(recordState, _dsConstants);
 
-    float fixedDT = 1.0f / 120.0f;
+    static constexpr float fixedDT = 1.0f / 120.0f;
     _pUpdateFishCompute->SetPushConstants(
         recordState,
         BoidsUpdateFishPipeline::PushConstants {
@@ -966,12 +968,18 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
         }
     );
 
-    vkCmdDispatch(
-        recordState.commandBuffer,
-        (_fishInstanceMetadata.instanceCount + 255) / 256,
-        1,
-        1
-    );
+    while (_resTime > fixedDT)
+    {
+        _resTime -= fixedDT;
+
+        vkCmdDispatch(
+            recordState.commandBuffer,
+            (_fishInstanceMetadata.instanceCount + 255) / 256,
+            1,
+            1
+        );
+    }
+
 
     LogicalDevice::EndCommandBuffer(recordState);
 
