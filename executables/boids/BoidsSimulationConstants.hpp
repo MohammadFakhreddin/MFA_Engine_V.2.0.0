@@ -2,34 +2,34 @@
 
 struct SimulationConstants
 {
-    int bEnableSeparationForce{};
-    int bEnableAlignmentForce{};
-    int bEnableCohesionForce{};
-    int bEnableSoftCollisionHandling{};
+    int bEnableSeparationForce {};
+    float separationRadius {};
+    float separationCos {};
+    float separationConstant {};
+    
+    int bEnableAlignmentForce {};
+    float alignmentRadius {};
+    float alignmentCos {};
+    float alignmentConstant {};
+    
+    int bEnableCohesionForce {};
+    float cohesionRadius {};
+    float cohesionCos {};
+    float cohesionConstant {};
+    
+    int bEnableSoftCollisionHandling {};
+    float softCollisionOffset {};
+    int bEnableHardCollisionHandling {};
+    float hardCollisionOffset {};
+    
+    int bClampSpeed {};
+    float minSpeed {};
+    float maxSpeed {};
+    int pad0 {};
 
-    int bEnableSoftCollisionForBoundary{};
-    int bEnableHardCollisionHandling{};
-    int bEnableBoundaryCollisionHandling{};
-    float separationRadius{};
-
-    float alignmentRadius{};
-    float cohesionRadius{};
-    float separationCos{};
-    float alignmentCos{};
-
-    float cohesionCos{};
-    float separationConstant{};
-    float cohesionConstant{};
-    float alignmentConstant{};
-
-    int bClampSpeed{};
-    float minSpeed{};
-    float maxSpeed{};
-    int bClampAcc{};
-
-    float minAcc{};
-    float maxAcc{};
-    float softCollisionOffset{};
-    float hardCollisionOffset{};
+    int bClampAcc {};
+    float minAcc {};
+    float maxAcc {};
+    int pad1 {};
 };
-static_assert(sizeof(SimulationConstants) % 16 == 0);
+static_assert(sizeof(SimulationConstants) % 16 == 0, "SimulationConstants must be aligned 16 by 16");

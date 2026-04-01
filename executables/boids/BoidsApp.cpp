@@ -94,13 +94,11 @@ void BoidsSimulationApp::PrepareSimulationConstants()
     _config.fishZCount = 5;
 
     _config.simulation.bEnableSeparationForce = true;
-    _config.simulation.bEnableAlignmentForce = true;
-    _config.simulation.bEnableCohesionForce = true;
-    _config.simulation.bEnableSoftCollisionHandling = true;
-    _config.simulation.bEnableSoftCollisionForBoundary = true;
+    _config.simulation.bEnableAlignmentForce = false;
+    _config.simulation.bEnableCohesionForce = false;
+    _config.simulation.bEnableSoftCollisionHandling = false;
     _config.simulation.bEnableHardCollisionHandling = false;
-    _config.simulation.bEnableBoundaryCollisionHandling = true;
-
+    
     _config.simulation.separationRadius = 2.0f;
     _config.simulation.alignmentRadius = 4.0f;
     _config.simulation.cohesionRadius = 4.0f;
@@ -634,16 +632,16 @@ void BoidsSimulationApp::PrepareScene()
     }
     collisionTriangles.insert(collisionTriangles.end(), cageTriangles.begin(), cageTriangles.end());
 
-    auto const torusTriangles =
-        ExtractCollisionTriangles(torusGltfModel->mesh->GetVertexCount(), torusGltfModel->mesh->GetIndexCount(),
-                                  torusGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
-                                  torusGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>());
+    // auto const torusTriangles =
+    //     ExtractCollisionTriangles(torusGltfModel->mesh->GetVertexCount(), torusGltfModel->mesh->GetIndexCount(),
+    //                               torusGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
+    //                               torusGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>());
 
-    for (auto const &torusInstance : torusInstances)
-    {
-        auto bakedTorusTriangles = BakeCollisionTriangles(torusTriangles, torusInstance);
-        collisionTriangles.insert(collisionTriangles.end(), bakedTorusTriangles.begin(), bakedTorusTriangles.end());
-    }
+    // for (auto const &torusInstance : torusInstances)
+    // {
+    //     auto bakedTorusTriangles = BakeCollisionTriangles(torusTriangles, torusInstance);
+    //     collisionTriangles.insert(collisionTriangles.end(), bakedTorusTriangles.begin(), bakedTorusTriangles.end());
+    // }
 
     MFA_ASSERT(sceneVertices.empty() == false);
     MFA_ASSERT(sceneIndices.empty() == false);

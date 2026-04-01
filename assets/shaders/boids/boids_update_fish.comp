@@ -280,8 +280,8 @@ void UpdatePosition(uint myIndex)
 // Hard collision is a failsafe when soft collision fails to deter fishes from passing through wall.
 void UpdateHardCollision(uint myIndex)
 {
-    vec3 q0 = myFish.rbPosition - myFish.rbVelocity * fixedDt;    // Previous position
-    vec3 q1 = myFish.rbPosition;                                           // Current position
+    vec3 q0 = myFish.rbPosition - myFish.rbVelocity * fixedDt;              // Previous position
+    vec3 q1 = myFish.rbPosition;                                            // Current position
     vec3 rbVelocity = myFish.rbVelocity;
 
     for (uint triIdx = 0u; triIdx < uint(triangles.length()); ++triIdx)

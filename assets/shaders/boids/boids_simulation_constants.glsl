@@ -4,36 +4,35 @@
 struct SimulationConstants
 {
     int bEnableSeparationForce;
-    int bEnableAlignmentForce;
-    int bEnableCohesionForce;
-    int bEnableSoftCollisionHandling;
-    int bEnableSoftCollisionForBoundary;
-    int bEnableHardCollisionHandling;
-    int bEnableBoundaryCollisionHandling;
-
     float separationRadius;
-    float alignmentRadius;
-    float cohesionRadius;
-
     float separationCos;
-    float alignmentCos;
-    float cohesionCos;
-
     float separationConstant;
-    float cohesionConstant;
+    
+    int bEnableAlignmentForce;
+    float alignmentRadius;
+    float alignmentCos;
     float alignmentConstant;
-
+    
+    int bEnableCohesionForce;
+    float cohesionRadius;
+    float cohesionCos;
+    float cohesionConstant;
+    
+    int bEnableSoftCollisionHandling;
+    float softCollisionOffset;
+    int bEnableHardCollisionHandling;
+    float hardCollisionOffset;
+    
     int bClampSpeed;
     float minSpeed;
     float maxSpeed;
+    int pad0;
 
     int bClampAcc;
     float minAcc;
     float maxAcc;
+    int pad1;
 
-    float softCollisionOffset;
-    float hardCollisionOffset;
-    
     // int bEnableSubMarineSeparationForce;
     // int bEnableSubMarineAlignmentForce;
     // int bEnableSubMarineCohesionForce;
@@ -54,9 +53,6 @@ struct SimulationConstants
     // float subMarineSeparationConstant;
     // float subMarineAlignmentConstant;
     // float subMarineCohesionConstant;
-
-    int placeholder0;
-    int placeholder1;
 };
 
 #endif
