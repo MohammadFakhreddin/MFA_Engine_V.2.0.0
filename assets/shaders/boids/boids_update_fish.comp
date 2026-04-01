@@ -163,9 +163,9 @@ bool IsInsideTriangle(uint triangleIndex, vec3 point, float offset)
 {
     CollisionTriangle t = triangles[triangleIndex];
 
-    vec3 v0 = t.normal * t.v0;
-    vec3 v1 = t.normal + t.v1;
-    vec3 v2 = t.normal + t.v2;
+    vec3 v0 = (t.normal * offset) + t.v0;
+    vec3 v1 = (t.normal * offset) + t.v1;
+    vec3 v2 = (t.normal * offset) + t.v2;
 
     return Math_IsInsideTriangleBarycentric(point, v0, v1, v2);
 }
@@ -174,6 +174,11 @@ bool IsInsideTriangle(uint triangleIndex, vec3 point, float offset)
 
 void UpdateSoftCollision(uint myIndex)
 {
+    if (simulation.bEnableSoftCollisionHandling <= 0)
+    {
+        return;
+    }
+
     vec3 position = myFish.rbPosition;
 
     // TODO: Instead we have to use the acceleration structure.
@@ -280,8 +285,15 @@ void UpdatePosition(uint myIndex)
 // Hard collision is a failsafe when soft collision fails to deter fishes from passing through wall.
 void UpdateHardCollision(uint myIndex)
 {
+    if (simulation.bEnableHardCollisionHandling <= 0)
+    {
+        return;
+    }
+
     vec3 q0 = myFish.rbPosition - myFish.rbVelocity * fixedDt;              // Previous position
     vec3 q1 = myFish.rbPosition;                                            // Current position
+    vec3 d = q1 - q0;
+
     vec3 rbVelocity = myFish.rbVelocity;
 
     for (uint triIdx = 0u; triIdx < uint(triangles.length()); ++triIdx)
@@ -289,12 +301,21 @@ void UpdateHardCollision(uint myIndex)
         CollisionTriangle tri = triangles[triIdx];
 
         vec3 n = tri.normal;
+
+        if (dot(n, d) >= 0)
+        {
+            continue;
+        }
+
         vec3 p = tri.v0 + n * simulation.hardCollisionOffset;
 
-        vec3 d = q1 - q0;
-        
         float denom = dot(n, d);
-        float t = -dot(q0, n)/denom;
+        if (abs(denom) < EPSILON)
+        {
+            continue;
+        }
+
+        float t = -dot(p - q0, n)/denom;
 
         if (t < 0 || t > 1)
         {
@@ -311,7 +332,7 @@ void UpdateHardCollision(uint myIndex)
 
         rbVelocity = reflect(rbVelocity, n);
 
-        q1 = qt;
+        q1 = qt + rbVelocity * (1 - t) * fixedDt;
     }
 
     myFish.rbPosition = q1;

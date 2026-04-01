@@ -94,10 +94,10 @@ void BoidsSimulationApp::PrepareSimulationConstants()
     _config.fishZCount = 5;
 
     _config.simulation.bEnableSeparationForce = true;
-    _config.simulation.bEnableAlignmentForce = false;
-    _config.simulation.bEnableCohesionForce = false;
-    _config.simulation.bEnableSoftCollisionHandling = false;
-    _config.simulation.bEnableHardCollisionHandling = false;
+    _config.simulation.bEnableAlignmentForce = true;
+    _config.simulation.bEnableCohesionForce = true;
+    _config.simulation.bEnableSoftCollisionHandling = true;
+    _config.simulation.bEnableHardCollisionHandling = true;
     
     _config.simulation.separationRadius = 2.0f;
     _config.simulation.alignmentRadius = 4.0f;
@@ -177,10 +177,10 @@ void BoidsSimulationApp::PrepareUI()
 void BoidsSimulationApp::PrepareCamera()
 {
     _camera = std::make_unique<MFA::ArcballCamera>([this]() -> VkExtent2D { return _sceneWindowSize; },
-                                                    [this]() -> bool { return _sceneWindowFocused; });
+                                                    [this]() -> bool { return _sceneWindowFocused; }, glm::vec3{}, -Math::UpVec3);
 
     
-    _camera->SetLocalPosition(glm::vec3{-54.0f/2, -36.0f/2, 69.0f/2});
+    _camera->SetLocalPosition(glm::vec3{-54.0f/2, 36.0f/2, 69.0f/2});
     _camera->SetmaxDistance(100.0f);
     
     _camera->Update(1.0f / 120.0f);
@@ -632,16 +632,16 @@ void BoidsSimulationApp::PrepareScene()
     }
     collisionTriangles.insert(collisionTriangles.end(), cageTriangles.begin(), cageTriangles.end());
 
-    // auto const torusTriangles =
-    //     ExtractCollisionTriangles(torusGltfModel->mesh->GetVertexCount(), torusGltfModel->mesh->GetIndexCount(),
-    //                               torusGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
-    //                               torusGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>());
+    auto const torusTriangles =
+        ExtractCollisionTriangles(torusGltfModel->mesh->GetVertexCount(), torusGltfModel->mesh->GetIndexCount(),
+                                  torusGltfModel->mesh->GetVertexData()->As<AS::GLTF::Vertex>(),
+                                  torusGltfModel->mesh->GetIndexData()->As<AS::GLTF::Index>());
 
-    // for (auto const &torusInstance : torusInstances)
-    // {
-    //     auto bakedTorusTriangles = BakeCollisionTriangles(torusTriangles, torusInstance);
-    //     collisionTriangles.insert(collisionTriangles.end(), bakedTorusTriangles.begin(), bakedTorusTriangles.end());
-    // }
+    for (auto const &torusInstance : torusInstances)
+    {
+        auto bakedTorusTriangles = BakeCollisionTriangles(torusTriangles, torusInstance);
+        collisionTriangles.insert(collisionTriangles.end(), bakedTorusTriangles.begin(), bakedTorusTriangles.end());
+    }
 
     MFA_ASSERT(sceneVertices.empty() == false);
     MFA_ASSERT(sceneIndices.empty() == false);
@@ -925,6 +925,15 @@ void BoidsSimulationApp::Update(float deltaTime)
         PrepareSceneRenderPass();
         _sceneWindowResized = false;
         return;
+    }
+
+    if (_reset == true)
+    {
+        _reset = false;
+        LogicalDevice::DeviceWaitIdle();
+        PrepareFishes();
+        PrepareComputeDescriptorSets();
+        return;    
     }
 
     // TODO: Whenever the rest button is pressed we have to respawn the fish in case the fish count has changed. We need
@@ -1213,15 +1222,15 @@ void BoidsSimulationApp::DisplaySimulationParameterWindow()
 {
     _ui->BeginWindow("Simulation parameters");
 
-    bool simulationConstantsChanged = false;
-    auto checkboxInt = [&simulationConstantsChanged](char const *label, int &value) -> void
+    auto checkboxInt = [](char const *label, int &value) -> bool
     {
-        bool checked = value != 0;
+        bool checked = (value != 0);
         if (ImGui::Checkbox(label, &checked))
         {
             value = checked ? 1 : 0;
-            simulationConstantsChanged = true;
+            return true;
         }
+        return false;
     };
 
     //--------------------------------------------------------------
@@ -1238,19 +1247,18 @@ void BoidsSimulationApp::DisplaySimulationParameterWindow()
     ImGui::Separator();
     //--------------------------------------------------------------
 
-    checkboxInt("Enable separation force", _config.simulation.bEnableSeparationForce);
-    checkboxInt("Enable alignment force", _config.simulation.bEnableAlignmentForce);
-    checkboxInt("Enable cohesion force", _config.simulation.bEnableCohesionForce);
-    checkboxInt("Enable soft collision handling", _config.simulation.bEnableSoftCollisionHandling);
-    checkboxInt("Enable soft collision for boundary", _config.simulation.bEnableSoftCollisionForBoundary);
-    checkboxInt("Enable hard collision handling", _config.simulation.bEnableHardCollisionHandling);
-    checkboxInt("Enable boundary collision handling", _config.simulation.bEnableBoundaryCollisionHandling);
-
+    bool simulationConstantsChanged = false;
+    simulationConstantsChanged |= checkboxInt("Enable separation force", _config.simulation.bEnableSeparationForce);
+    simulationConstantsChanged |= checkboxInt("Enable alignment force", _config.simulation.bEnableAlignmentForce);
+    simulationConstantsChanged |= checkboxInt("Enable cohesion force", _config.simulation.bEnableCohesionForce);
+    simulationConstantsChanged |= checkboxInt("Enable soft collision handling", _config.simulation.bEnableSoftCollisionHandling);
+    simulationConstantsChanged |= checkboxInt("Enable hard collision handling", _config.simulation.bEnableHardCollisionHandling);
+    
     //--------------------------------------------------------------
     ImGui::Separator();
     //--------------------------------------------------------------
 
-    simulationConstantsChanged =
+    simulationConstantsChanged |=
         ImGui::InputFloat("Separation radius", &_config.simulation.separationRadius) || simulationConstantsChanged;
     simulationConstantsChanged =
         ImGui::InputFloat("Separation cos", &_config.simulation.separationCos) || simulationConstantsChanged;
