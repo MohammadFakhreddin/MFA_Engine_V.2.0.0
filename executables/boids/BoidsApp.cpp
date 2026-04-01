@@ -959,10 +959,11 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
     _pUpdateFishCompute->BindSimulationConstants(recordState, _dsConstants);
 
     static constexpr float fixedDT = 1.0f / 120.0f;
+    
     _pUpdateFishCompute->SetPushConstants(
         recordState,
         BoidsUpdateFishPipeline::PushConstants {
-            .dt = fixedDT,
+            .dt = Time::DeltaTimeSec(),
             .fixedDt = fixedDT,
             .stateMask = 0xFFFFFF
         }
