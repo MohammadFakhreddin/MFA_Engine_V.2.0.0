@@ -949,6 +949,7 @@ void BoidsSimulationApp::Update(float deltaTime)
 //======================================================================================================================
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
+    // TODO: Start from here. Fix the issues about soft collision. Fishes are passing through toruses.
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
 
     UpdateBufferTrackers(recordState);
@@ -960,13 +961,15 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 
     static constexpr float fixedDT = 1.0f / 120.0f;
     
+    BoidsUpdateFishPipeline::PushConstants constants {
+        .dt = Time::DeltaTimeSec(),
+        .fixedDt = fixedDT,
+        .stateMask = (1u << 1)
+    };
+
     _pUpdateFishCompute->SetPushConstants(
         recordState,
-        BoidsUpdateFishPipeline::PushConstants {
-            .dt = Time::DeltaTimeSec(),
-            .fixedDt = fixedDT,
-            .stateMask = 0xFFFFFF
-        }
+        constants
     );
 
     while (_resTime > fixedDT)
@@ -981,6 +984,19 @@ void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
         );
     }
 
+    constants.stateMask = (1u << 0);
+
+    _pUpdateFishCompute->SetPushConstants(
+        recordState,
+        constants
+    );
+
+    vkCmdDispatch(
+        recordState.commandBuffer,
+        (_fishInstanceMetadata.instanceCount + 255) / 256,
+        1,
+        1
+    );
 
     LogicalDevice::EndCommandBuffer(recordState);
 
