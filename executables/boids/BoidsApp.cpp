@@ -947,6 +947,7 @@ void BoidsSimulationApp::Update(float deltaTime)
 //======================================================================================================================
 void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
 {
+    // TODO: Start from here. Fix the issues about soft collision. Fishes are passing through toruses.
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);
 
     UpdateBufferTrackers(recordState);

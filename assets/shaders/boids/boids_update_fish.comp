@@ -7,8 +7,6 @@
 
 #define FLAG_ENABLE_UPDATE       (1u << 0) // bit 0
 #define FLAG_ENABLE_FIXED_UPDATE (1u << 1) // bit 1
-#define FLAG_ENABLE_RENDER       (1u << 2) // bit 2
-#define FLAG_DEBUG_MODE          (1u << 3) // bit 3
 
 #define myFish fishes[myIndex]
 #define myModel models[myIndex]
@@ -86,7 +84,7 @@ void UpdateNeighborhoodForces(uint myIndex)
         vec3 posVec = otherPosition - myPosition;
         float distance2 = dot(posVec, posVec);
 
-        if (distance2 <= 1e-8 || distance2 > maximumRadius2) continue;
+        if (distance2 <= EPSILON || distance2 > maximumRadius2) continue;
 
         vec3 otherVelocity = otherFish.rbVelocity;
 
@@ -96,7 +94,7 @@ void UpdateNeighborhoodForces(uint myIndex)
         vec3 velVec = otherVelocity - myVelocity;
         float velLen2 = dot(velVec, velVec);
 
-        if (velLen2 <= 1e-8) continue;
+        if (velLen2 <= EPSILON) continue;
 
         vec3 velDir = velVec * inversesqrt(velLen2);
         float dotProd = dot(posDir, velDir);
@@ -192,7 +190,7 @@ void UpdateSoftCollision(uint myIndex)
         vec3 q = tri.v0 + (n * simulation.softCollisionOffset);
 
         float dotNV = dot(n, velocity);
-        if (dotNV >= 0.0) continue;
+        if (dotNV >= EPSILON) continue;
 
         vec3 pqVec = position - q;
 
