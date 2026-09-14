@@ -2,9 +2,9 @@
 // Created by mohammad on 2026-03-08.
 //
 
-#include "PerlinNoiseApp.hpp"
 #include "BedrockPath.hpp"
 #include "Buffers.hpp"
+#include "ShellTexturingApp.hpp"
 #include "LogicalDevice.hpp"
 
 #include <filesystem>
@@ -13,7 +13,7 @@ using namespace MFA;
 
 //======================================================================================================================
 
-PerlinNoiseApp::PerlinNoiseApp()
+ShellTexturingApp::ShellTexturingApp()
 {
     if (SDL_JoystickOpen(0) != nullptr)
         SDL_JoystickEventState(SDL_ENABLE);
@@ -55,11 +55,11 @@ PerlinNoiseApp::PerlinNoiseApp()
 
 //======================================================================================================================
 
-PerlinNoiseApp::~PerlinNoiseApp() = default;
+ShellTexturingApp::~ShellTexturingApp() = default;
 
 //======================================================================================================================
 
-void PerlinNoiseApp::Run()
+void ShellTexturingApp::Run()
 {
     SDL_GL_SetSwapInterval(0);
     SDL_Event e;
@@ -103,7 +103,7 @@ void PerlinNoiseApp::Run()
 
 //======================================================================================================================
 
-void PerlinNoiseApp::Update(float deltaTime)
+void ShellTexturingApp::Update(float deltaTime)
 {
     if (_sceneWindowResized == true)
     {
@@ -117,7 +117,7 @@ void PerlinNoiseApp::Update(float deltaTime)
 
 //======================================================================================================================
 
-void PerlinNoiseApp::Render(MFA::RT::CommandRecordState &recordState)
+void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
 {
     // device->BeginCommandBuffer(
     //     recordState,
@@ -142,21 +142,21 @@ void PerlinNoiseApp::Render(MFA::RT::CommandRecordState &recordState)
 
 //======================================================================================================================
 
-void PerlinNoiseApp::Resize()
+void ShellTexturingApp::Resize()
 {
     _sceneWindowResized = true;
 }
 
 //======================================================================================================================
 
-void PerlinNoiseApp::Reload()
+void ShellTexturingApp::Reload()
 {
     LogicalDevice::DeviceWaitIdle();
 }
 
 //======================================================================================================================
 
-void PerlinNoiseApp::OnSDL_Event(SDL_Event *event)
+void ShellTexturingApp::OnSDL_Event(SDL_Event *event)
 {
     // if (UI::Instance != nullptr && UI::Instance->HasFocus() == true)
     // {
@@ -178,7 +178,7 @@ void PerlinNoiseApp::OnSDL_Event(SDL_Event *event)
 
 //======================================================================================================================
 
-void PerlinNoiseApp::OnUI(float deltaTimeSec)
+void ShellTexturingApp::OnUI(float deltaTimeSec)
 {
     ApplyUI_Style();
     _ui->DisplayDockSpace();
@@ -188,7 +188,7 @@ void PerlinNoiseApp::OnUI(float deltaTimeSec)
 
 //======================================================================================================================
 
-void PerlinNoiseApp::PrepareSceneRenderPass()
+void ShellTexturingApp::PrepareSceneRenderPass()
 {
     auto const maxImageCount = LogicalDevice::GetSwapChainImageCount();
 
@@ -247,7 +247,7 @@ void PerlinNoiseApp::PrepareSceneRenderPass()
 
 //======================================================================================================================
 
-void PerlinNoiseApp::ApplyUI_Style()
+void ShellTexturingApp::ApplyUI_Style()
 {
     ImGuiStyle &style = ImGui::GetStyle();
     ImVec4 *colors = style.Colors;
@@ -310,7 +310,7 @@ void PerlinNoiseApp::ApplyUI_Style()
 
 //======================================================================================================================
 
-void PerlinNoiseApp::DisplayParametersWindow()
+void ShellTexturingApp::DisplayParametersWindow()
 {
     _ui->BeginWindow("Parameters");
 
@@ -321,7 +321,7 @@ void PerlinNoiseApp::DisplayParametersWindow()
 
 //======================================================================================================================
 
-void PerlinNoiseApp::DisplaySceneWindow()
+void ShellTexturingApp::DisplaySceneWindow()
 {
     _ui->BeginWindow("Scene");
     auto sceneWindowSize = ImGui::GetWindowSize();

@@ -9,7 +9,6 @@
                 "-lc",
                 "ext=\"${fileExtname}\"; ext=\"${ext#.}\"; case \"$ext\" in vert|frag|comp|geom|tesc|tese|mesh|task|rgen|rchit|rahit|rmiss|rint|rcall) stage=\"$ext\" ;; *) echo \"Unsupported shader extension: ${fileExtname}\" >&2; exit 1 ;; esac; glslc -g -fshader-stage=\"$stage\" \"${file}\" -o \"${file}.spv\" -std=450core"
             ],
-            "group": "build",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared",
@@ -18,9 +17,76 @@
             "problemMatcher": [
                 "$gcc"
             ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "options": {
                 "cwd": "${workspaceFolder}"
             }
-        }
+        },
+        {
+            "label": "Build All (Debug)",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}\\build",
+                "--config",
+                "Debug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ]
+        },
+        {
+            "label": "Run Boids App (Debug)",
+            "type": "process",
+            "command": "${workspaceFolder}\\build\\executables\\boids\\Debug\\BoidsApp.exe",
+            "dependsOn": "Build All (Debug)",
+            "dependsOrder": "sequence",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Shell Texturing App (Debug)",
+            "type": "process",
+            "command": "${workspaceFolder}\\build\\executables\\shell_texturing\\Debug\\ShellTexturingApp.exe",
+            "dependsOn": "Build All (Debug)",
+            "dependsOrder": "sequence",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }W
     ]
 }

@@ -1,12 +1,12 @@
 ########################################
 
-set(EXECUTABLE "PerlinNoiseApp")
+set(EXECUTABLE "ShellTexturingApp")
 
 list(
     APPEND EXECUTABLE_RESOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/PerlinNoiseMain.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PerlinNoiseApp.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PerlinNoiseApp.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingAppMain.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingApp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingApp.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})

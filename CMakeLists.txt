@@ -174,10 +174,8 @@ include_directories("${CMAKE_SOURCE_DIR}/webview")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/empty_app")
 
+add_subdirectory("${CMAKE_SOURCE_DIR}/executables/shell_texturing")
+
 add_subdirectory("${CMAKE_SOURCE_DIR}/executables/boids")
-
-add_subdirectory("${CMAKE_SOURCE_DIR}/executables/perlin_noise")
-
-add_subdirectory("${CMAKE_SOURCE_DIR}/executables/volumetric_sphere")
 
 ##########################################################

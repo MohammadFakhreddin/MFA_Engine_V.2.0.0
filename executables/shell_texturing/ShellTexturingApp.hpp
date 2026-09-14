@@ -1,21 +1,24 @@
-#pragma once
+//
+// Created by mohammad on 2026-03-08.
+//
+
+#ifndef MFA_SHELL_TEXTURING_APP_HPP
+#define MFA_SHELL_TEXTURING_APP_HPP
 
 #include "RenderTypes.hpp"
 #include "SceneRenderPass.hpp"
-#include "GridRenderer.hpp"
 #include "Time.hpp"
 #include "UI.hpp"
-#include "camera/ArcballCamera.hpp"
 
 #include <SDL_events.h>
 
-class VolumetricSphereApp
+// TODO: This scene is used to generate, visualize and save perlin noise for cloud texture.
+class ShellTexturingApp
 {
 public:
+    explicit ShellTexturingApp();
 
-    explicit VolumetricSphereApp();
-
-    ~VolumetricSphereApp();
+    ~ShellTexturingApp();
 
     void Run();
 
@@ -23,13 +26,13 @@ private:
 
     void Update(float deltaTime);
 
-    void Render(MFA::RT::CommandRecordState & recordState);
+    void Render(MFA::RT::CommandRecordState &recordState);
 
     void Resize();
 
     void Reload();
 
-    void OnSDL_Event(SDL_Event* event);
+    void OnSDL_Event(SDL_Event *event);
 
     void OnUI(float deltaTimeSec);
 
@@ -59,20 +62,11 @@ private:
     bool _sceneWindowResized = false;
     bool _sceneWindowFocused = false;
 
-    ImFont* _defaultFont{};
-    ImFont* _boldFont{};
-
-    std::shared_ptr<GridPipeline> _gridPipeline{};
-    std::unique_ptr<GridRenderer> _gridRenderer{};
-
-    std::unique_ptr<MFA::ArcballCamera> _camera{};
+    ImFont *_defaultFont{};
+    ImFont *_boldFont{};
 
     int _activeImageIndex{};
-
-    glm::vec3 _lightDirection = glm::vec3(-1.0f, 0.0f, -1.0f);
-    glm::vec3 _lightColor {1.0f, 1.0f, 1.0f};
-    float _lightIntensity = 1.0f;
-    float _specularLightIntensity = 1.0f;
-    int _shininess = 32;
-    float _ambientStrength = 0.25f;
 };
+
+
+#endif // MFA_SHELL_TEXTURING_APP_HPP

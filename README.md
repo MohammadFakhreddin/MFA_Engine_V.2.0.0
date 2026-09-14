@@ -39,3 +39,7 @@ First, ensure you have installed the Vulkan SDK and CMake (version 3.10+).
 
 ## 📖 Resources
 // WIP
+
+## Contributing
+
+See [Adding examples and tests](docs/ADDING_EXAMPLES_AND_TESTS.md) for the required naming, CMake, VS Code task, documentation, and verification steps.
