@@ -2,10 +2,11 @@
 // Created by mohammad on 2026-03-08.
 //
 
-#include "BedrockPath.hpp"
-#include "Buffers.hpp"
 #include "ShellTexturingApp.hpp"
+#include "BedrockPath.hpp"
+#include "ShapeGenerator.hpp"
 #include "LogicalDevice.hpp"
+#include "BlinnPhongPipeline.hpp"
 
 #include <filesystem>
 
@@ -51,6 +52,8 @@ ShellTexturingApp::ShellTexturingApp()
     LogicalDevice::ResizeEventSignal2.Register([this]() -> void { Resize(); });
 
     PrepareSceneRenderPass();
+
+    PrepareMesh();
 }
 
 //======================================================================================================================
@@ -142,17 +145,11 @@ void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
 
 //======================================================================================================================
 
-void ShellTexturingApp::Resize()
-{
-    _sceneWindowResized = true;
-}
+void ShellTexturingApp::Resize() { _sceneWindowResized = true; }
 
 //======================================================================================================================
 
-void ShellTexturingApp::Reload()
-{
-    LogicalDevice::DeviceWaitIdle();
-}
+void ShellTexturingApp::Reload() { LogicalDevice::DeviceWaitIdle(); }
 
 //======================================================================================================================
 
@@ -247,6 +244,16 @@ void ShellTexturingApp::PrepareSceneRenderPass()
 
 //======================================================================================================================
 
+void ShellTexturingApp::PrepareMesh()
+{
+    // Prepare your mesh here
+    const auto [vertices, indices, normals] = ShapeGenerator::Sphere(1.0f, 32, 32);
+    
+
+}
+
+//======================================================================================================================
+
 void ShellTexturingApp::ApplyUI_Style()
 {
     ImGuiStyle &style = ImGui::GetStyle();
@@ -313,7 +320,6 @@ void ShellTexturingApp::ApplyUI_Style()
 void ShellTexturingApp::DisplayParametersWindow()
 {
     _ui->BeginWindow("Parameters");
-
 
 
     _ui->EndWindow();

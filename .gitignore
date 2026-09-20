@@ -116,6 +116,11 @@ android/local.properties
 
 .vscode/*
 !.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Dedicated Ninja tree used to generate compile_commands.json for clangd.
+build-clangd/
 
 *.xcodeproj
 

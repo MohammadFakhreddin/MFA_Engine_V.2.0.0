@@ -38,6 +38,8 @@ private:
 
     void PrepareSceneRenderPass();
 
+    void PrepareMesh();
+
     void ApplyUI_Style();
 
     void DisplayParametersWindow();

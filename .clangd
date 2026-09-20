@@ -1,0 +1,12 @@
+CompileFlags:
+  CompilationDatabase: build-clangd
+
+Index:
+  Background: Build
+
+Diagnostics:
+  # clangd diagnoses an MSVC intrinsic redeclaration in the Visual Studio
+  # standard headers. MSVC accepts the declaration, so hide this toolchain-only
+  # diagnostic while retaining project diagnostics.
+  Suppress:
+    - builtin_definition

@@ -7,6 +7,18 @@
 
 #define EPSILON 1e-6f
 
+float rand01(float seed)
+{
+    uint x = floatBitsToUint(seed) ^ 0x9e3779b9u;
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+
+    return float(x >> 8) * (1.0 / 16777216.0);
+}
+
 bool Math_IsInsideTriangleBarycentric(vec3 q, vec3 p0, vec3 p1, vec3 p2)
 {
     vec3 v0 = p0 - p2;

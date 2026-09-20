@@ -9,18 +9,22 @@
 
 #ifdef __PLATFORM_WIN__
 
+#define MFA_ASSUME(condition)           __assume(condition)
+
 #ifdef MFA_DEBUG
-#define MFA_ASSERT(condition)           assert(condition); _assume(condition)
+#define MFA_ASSERT(condition)           assert(condition); MFA_ASSUME(condition)
 #else
-#define MFA_ASSERT(condition)           _assume(condition)
+#define MFA_ASSERT(condition)           MFA_ASSUME(condition)
 #endif
 
-#define MFA_REQUIRE(condition)          if(!(condition)) {MFA_CRASH("Condition failed");}; _assume(condition)
+#define MFA_REQUIRE(condition)          if(!(condition)) {MFA_CRASH("Condition failed");}; MFA_ASSUME(condition)
 
 #define MFA_CRASH(message, ...)         MFA_LOG_ERROR(message, __VA_ARGS__); throw std::runtime_error(message)
 
 
 #else
+
+#define MFA_ASSUME(condition)
 
 #ifdef MFA_DEBUG
 #define MFA_ASSERT(condition)           assert(condition);
