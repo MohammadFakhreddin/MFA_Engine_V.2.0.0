@@ -7,6 +7,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingAppMain.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingApp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingApp.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingPipeline.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ShellTexturingPipeline.hpp"
 )
 
 add_executable(${EXECUTABLE} ${EXECUTABLE_RESOURCES})

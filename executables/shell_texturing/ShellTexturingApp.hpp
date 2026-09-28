@@ -5,14 +5,16 @@
 #ifndef MFA_SHELL_TEXTURING_APP_HPP
 #define MFA_SHELL_TEXTURING_APP_HPP
 
+#include "BufferTracker.hpp"
 #include "RenderTypes.hpp"
 #include "SceneRenderPass.hpp"
+#include "ShellTexturingPipeline.hpp"
 #include "Time.hpp"
 #include "UI.hpp"
+#include "camera/ArcballCamera.hpp"
 
 #include <SDL_events.h>
 
-// TODO: This scene is used to generate, visualize and save perlin noise for cloud texture.
 class ShellTexturingApp
 {
 public:
@@ -38,13 +40,24 @@ private:
 
     void PrepareSceneRenderPass();
 
+    void PrepareCamera();
+
     void PrepareMesh();
+
+    void PrepareUniformBuffers();
+
+    void PreparePipeline();
+
+    void PrepareDescriptorSets();
+
+    void UpdateCamera(float deltaTime);
+
+    void UpdateBuffers(MFA::RT::CommandRecordState const &recordState);
 
     void ApplyUI_Style();
 
     void DisplayParametersWindow();
 
-    // You need to be able to select and view objects in the editor window
     void DisplaySceneWindow();
 
     std::shared_ptr<MFA::UI> _ui{};
@@ -68,6 +81,38 @@ private:
     ImFont *_boldFont{};
 
     int _activeImageIndex{};
+
+    std::unique_ptr<MFA::ArcballCamera> _camera{};
+
+    MFA::ShellTexturingPipeline::Shell _shell{};
+    MFA::ShellTexturingPipeline::Model _model{};
+    MFA::ShellTexturingPipeline::Material _material{};
+    MFA::ShellTexturingPipeline::Light _light{};
+
+    std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
+    std::unique_ptr<MFA::HostVisibleBufferTracker> _shellBufferTracker{};
+    std::unique_ptr<MFA::HostVisibleBufferTracker> _modelBufferTracker{};
+    std::unique_ptr<MFA::HostVisibleBufferTracker> _materialBufferTracker{};
+    std::unique_ptr<MFA::HostVisibleBufferTracker> _lightBufferTracker{};
+
+    std::shared_ptr<MFA::RT::BufferGroup> _vertexBuffer{};
+    std::shared_ptr<MFA::RT::BufferGroup> _indexBuffer{};
+    std::unique_ptr<MFA::LocalBufferTracker> _vertexBufferTracker{};
+    std::unique_ptr<MFA::LocalBufferTracker> _indexBufferTracker{};
+    uint32_t _indexCount = 0;
+    int _sliceCount = 64;
+    int _stackCount = 48;
+    bool _meshRebuildRequested = false;
+
+    std::shared_ptr<MFA::RT::GpuTexture> _albedoTexture{};
+
+    std::unique_ptr<MFA::ShellTexturingPipeline> _pipeline{};
+    MFA::RT::DescriptorSetGroup _cameraDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _shellDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _modelDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _materialDescriptorSets{};
+    MFA::RT::DescriptorSetGroup _albedoTextureDescriptorSet{};
+    MFA::RT::DescriptorSetGroup _lightDescriptorSets{};
 };
 
 

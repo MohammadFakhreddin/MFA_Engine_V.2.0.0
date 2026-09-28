@@ -38,7 +38,9 @@ layout(set = 5, binding = 0, std140) uniform LightBuffer
 void main()
 {
     uint shellIndex = uint(inInstanceIndex);
+
     uint shellCount = uint(shell.count);
+
     float shellFraction = float(shellIndex) / float(max(shellCount - 1, 1));
 
     float radius = length(inWorldPosition - inWorldCenter);
@@ -48,17 +50,21 @@ void main()
     }
 
     vec4 color = material.albedo;
+
     if (material.albedoTexture >= 0)
     {
         color *= texture(albedoTexture, inUV);
     }
 
-    vec3 ambient = light.ambientStrength * light.color;
+    outColor = color * (float(shellIndex) / float(max(shellCount, 1)));
+    outColor.a = color.a;
+
+    // vec3 ambient = light.ambientStrength * light.color;
     
-    float halfLambert = dot(normalize(light.direction), normalize(inWorldNormal)) * 0.5 + 0.5;
-    vec3 diffuse = halfLambert * light.color;
+    // float halfLambert = dot(normalize(light.direction), normalize(inWorldNormal)) * 0.5 + 0.5;
+    // vec3 diffuse = halfLambert * light.color;
 
-    float heightAttenuation = shellFraction;
+    // float heightAttenuation = shellFraction;
 
-    outColor = vec4(heightAttenuation * (diffuse + ambient) * color.rgb, color.a);
+    // outColor = vec4(heightAttenuation * (diffuse + ambient) * color.rgb, color.a);
 }

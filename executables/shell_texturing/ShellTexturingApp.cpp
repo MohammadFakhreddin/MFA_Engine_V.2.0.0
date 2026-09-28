@@ -3,12 +3,20 @@
 //
 
 #include "ShellTexturingApp.hpp"
-#include "BedrockPath.hpp"
-#include "ShapeGenerator.hpp"
-#include "LogicalDevice.hpp"
-#include "BlinnPhongPipeline.hpp"
 
+#include "BedrockAssert.hpp"
+#include "BedrockPath.hpp"
+#include "ImportTexture.hpp"
+#include "LogicalDevice.hpp"
+#include "RenderBackend.hpp"
+#include "ShapeGenerator.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cstdint>
 #include <filesystem>
+#include <memory>
+#include <vector>
 
 using namespace MFA;
 
@@ -26,7 +34,10 @@ ShellTexturingApp::ShellTexturingApp()
     _msaaResource = std::make_shared<MSSAA_RenderResource>();
     _displayRenderPass = std::make_shared<DisplayRenderPass>(_swapChainResource, _depthResource, _msaaResource);
 
-    _sampler = RB::CreateSampler(LogicalDevice::GetVkDevice(), RB::CreateSamplerParams{});
+    _sampler = RB::CreateSampler(
+        LogicalDevice::GetVkDevice(),
+        RB::CreateSamplerParams{.compareEnable = false}
+    );
 
     _ui = std::make_shared<UI>(_displayRenderPass,
                                UI::Params{.lightMode = false,
@@ -52,8 +63,11 @@ ShellTexturingApp::ShellTexturingApp()
     LogicalDevice::ResizeEventSignal2.Register([this]() -> void { Resize(); });
 
     PrepareSceneRenderPass();
-
+    PrepareCamera();
     PrepareMesh();
+    PrepareUniformBuffers();
+    PreparePipeline();
+    PrepareDescriptorSets();
 }
 
 //======================================================================================================================
@@ -115,6 +129,14 @@ void ShellTexturingApp::Update(float deltaTime)
         return;
     }
 
+    if (_meshRebuildRequested == true)
+    {
+        LogicalDevice::DeviceWaitIdle();
+        PrepareMesh();
+        _meshRebuildRequested = false;
+    }
+
+    UpdateCamera(deltaTime);
     _ui->Update();
 }
 
@@ -122,15 +144,26 @@ void ShellTexturingApp::Update(float deltaTime)
 
 void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
 {
-    // device->BeginCommandBuffer(
-    //     recordState,
-    //     RT::CommandBufferType::Compute
-    // );
-    // device->EndCommandBuffer(recordState);
-
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
+    UpdateBuffers(recordState);
+
     _sceneRenderPass->Begin(recordState, *_sceneFrameBuffer);
+
+    _pipeline->BindPipeline(recordState);
+    _pipeline->BindDescriptorSets(
+        recordState,
+        _cameraDescriptorSets,
+        _shellDescriptorSets,
+        _modelDescriptorSets,
+        _materialDescriptorSets,
+        _albedoTextureDescriptorSet,
+        _lightDescriptorSets
+    );
+
+    RB::BindVertexBuffer(recordState, *_vertexBuffer->buffers.front(), 0, 0);
+    RB::BindIndexBuffer(recordState, *_indexBuffer->buffers.front(), 0);
+    RB::DrawIndexed(recordState, _indexCount, static_cast<uint32_t>(_shell.count));
 
     _sceneRenderPass->End(recordState);
 
@@ -145,11 +178,26 @@ void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
 
 //======================================================================================================================
 
-void ShellTexturingApp::Resize() { _sceneWindowResized = true; }
+void ShellTexturingApp::Resize()
+{
+    if (_camera != nullptr)
+    {
+        _camera->SetProjectionDirty();
+    }
+    _sceneWindowResized = true;
+}
 
 //======================================================================================================================
 
-void ShellTexturingApp::Reload() { LogicalDevice::DeviceWaitIdle(); }
+void ShellTexturingApp::Reload()
+{
+    MFA_LOG_INFO("Reloading shell texturing app");
+    LogicalDevice::DeviceWaitIdle();
+    if (_pipeline != nullptr)
+    {
+        _pipeline->Reload();
+    }
+}
 
 //======================================================================================================================
 
@@ -244,12 +292,168 @@ void ShellTexturingApp::PrepareSceneRenderPass()
 
 //======================================================================================================================
 
+void ShellTexturingApp::PrepareCamera()
+{
+    _camera = std::make_unique<ArcballCamera>(
+        [this]() -> VkExtent2D { return _sceneWindowSize; },
+        [this]() -> bool { return _sceneWindowFocused; }
+    );
+    _camera->SetLocalPosition(glm::vec3{0.0f, 0.0f, -4.0f});
+    _camera->SetminDistance(2.0f);
+    _camera->SetmaxDistance(12.0f);
+}
+
+//======================================================================================================================
+
 void ShellTexturingApp::PrepareMesh()
 {
-    // Prepare your mesh here
-    const auto [vertices, indices, normals] = ShapeGenerator::Sphere(1.0f, 32, 32);
-    
+    auto const [positions, indices, normals] = ShapeGenerator::Sphere(1.0f, _sliceCount, _stackCount);
 
+    MFA_ASSERT(positions.size() == normals.size());
+    std::vector<ShellTexturingPipeline::Vertex> vertices{};
+    vertices.reserve(positions.size());
+    for (int stack = 0; stack <= _stackCount; ++stack)
+    {
+        for (int slice = 0; slice <= _sliceCount; ++slice)
+        {
+            auto const vertexIndex = static_cast<size_t>(stack * (_sliceCount + 1) + slice);
+            auto const u = static_cast<float>(slice) / static_cast<float>(_sliceCount);
+            auto const v = static_cast<float>(stack) / static_cast<float>(_stackCount);
+            vertices.emplace_back(ShellTexturingPipeline::Vertex{
+                .position = positions[vertexIndex],
+                .normal = normals[vertexIndex],
+                .uv = glm::vec2{u, v},
+                .center = glm::vec3{0.0f},
+            });
+        }
+    }
+
+    MFA_ASSERT(vertices.empty() == false);
+    MFA_ASSERT(indices.empty() == false);
+    _indexCount = static_cast<uint32_t>(indices.size());
+
+    auto const device = LogicalDevice::GetVkDevice();
+    auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
+    auto const vertexBufferSize = sizeof(ShellTexturingPipeline::Vertex) * vertices.size();
+    auto const indexBufferSize = sizeof(uint32_t) * indices.size();
+
+    _vertexBuffer = RB::CreateVertexBufferGroup(device, physicalDevice, vertexBufferSize, 1);
+    _indexBuffer = RB::CreateBufferGroup(
+        device,
+        physicalDevice,
+        indexBufferSize,
+        1,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
+    _vertexBufferTracker = std::make_unique<LocalBufferTracker>(
+        _vertexBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, vertexBufferSize, 1),
+        Alias{vertices.data(), vertices.size()}
+    );
+    _indexBufferTracker = std::make_unique<LocalBufferTracker>(
+        _indexBuffer,
+        RB::CreateStageBuffer(device, physicalDevice, indexBufferSize, 1),
+        Alias{indices.data(), indices.size()}
+    );
+
+    if (_albedoTexture == nullptr)
+    {
+        auto const cpuTexture = Importer::ErrorTexture();
+        auto commandBuffer = RB::BeginSingleTimeCommand(device, *LogicalDevice::GetGraphicCommandPool());
+        std::array<uint8_t, 1> mipLevels{0};
+        auto [texture, stagingBuffer] = RB::CreateTexture(
+            *cpuTexture,
+            device,
+            physicalDevice,
+            commandBuffer,
+            static_cast<int>(mipLevels.size()),
+            mipLevels.data()
+        );
+        RB::EndAndSubmitSingleTimeCommand(
+            device,
+            *LogicalDevice::GetGraphicCommandPool(),
+            LogicalDevice::GetGraphicQueue(),
+            commandBuffer
+        );
+        (void)stagingBuffer;
+        _albedoTexture = std::move(texture);
+    }
+}
+
+//======================================================================================================================
+
+void ShellTexturingApp::PrepareUniformBuffers()
+{
+    auto const device = LogicalDevice::GetVkDevice();
+    auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
+    auto const frameCount = LogicalDevice::GetMaxFramePerFlight();
+
+    ShellTexturingPipeline::Camera const camera{.viewProjection = _camera->ViewProjection()};
+    _cameraBufferTracker = std::make_unique<HostVisibleBufferTracker>(
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(camera), frameCount),
+        Alias{camera}
+    );
+    _shellBufferTracker = std::make_unique<HostVisibleBufferTracker>(
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_shell), frameCount),
+        Alias{_shell}
+    );
+    _modelBufferTracker = std::make_unique<HostVisibleBufferTracker>(
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_model), frameCount),
+        Alias{_model}
+    );
+    _materialBufferTracker = std::make_unique<HostVisibleBufferTracker>(
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_material), frameCount),
+        Alias{_material}
+    );
+    _lightBufferTracker = std::make_unique<HostVisibleBufferTracker>(
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_light), frameCount),
+        Alias{_light}
+    );
+}
+
+//======================================================================================================================
+
+void ShellTexturingApp::PreparePipeline()
+{
+    _pipeline = std::make_unique<ShellTexturingPipeline>(_sceneRenderPass->GetRenderPass());
+}
+
+//======================================================================================================================
+
+void ShellTexturingApp::PrepareDescriptorSets()
+{
+    _cameraDescriptorSets = _pipeline->CreateCameraDescriptorSets(_cameraBufferTracker->HostVisibleBuffer());
+    _shellDescriptorSets = _pipeline->CreateShellDescriptorSets(_shellBufferTracker->HostVisibleBuffer());
+    _modelDescriptorSets = _pipeline->CreateModelDescriptorSets(_modelBufferTracker->HostVisibleBuffer());
+    _materialDescriptorSets = _pipeline->CreateMaterialDescriptorSets(_materialBufferTracker->HostVisibleBuffer());
+    _albedoTextureDescriptorSet = _pipeline->CreateAlbedoTextureDescriptorSet(*_sampler, *_albedoTexture);
+    _lightDescriptorSets = _pipeline->CreateLightDescriptorSets(_lightBufferTracker->HostVisibleBuffer());
+}
+
+//======================================================================================================================
+
+void ShellTexturingApp::UpdateCamera(float const deltaTime)
+{
+    _camera->Update(deltaTime);
+    if (_camera->IsDirty())
+    {
+        ShellTexturingPipeline::Camera const camera{.viewProjection = _camera->ViewProjection()};
+        _cameraBufferTracker->SetData(Alias{camera});
+    }
+}
+
+//======================================================================================================================
+
+void ShellTexturingApp::UpdateBuffers(RT::CommandRecordState const &recordState)
+{
+    _vertexBufferTracker->Update(recordState);
+    _indexBufferTracker->Update(recordState);
+    _cameraBufferTracker->Update(recordState);
+    _shellBufferTracker->Update(recordState);
+    _modelBufferTracker->Update(recordState);
+    _materialBufferTracker->Update(recordState);
+    _lightBufferTracker->Update(recordState);
 }
 
 //======================================================================================================================
@@ -321,6 +525,41 @@ void ShellTexturingApp::DisplayParametersWindow()
 {
     _ui->BeginWindow("Parameters");
 
+    bool meshChanged = false;
+    meshChanged |= ImGui::SliderInt("Slice count", &_sliceCount, 3, 128);
+    meshChanged |= ImGui::SliderInt("Stack count", &_stackCount, 2, 128);
+    if (meshChanged)
+    {
+        _meshRebuildRequested = true;
+    }
+
+    bool shellChanged = false;
+    shellChanged |= ImGui::SliderFloat("Layer displacement", &_shell.displacement, 0.001f, 0.05f, "%.3f");
+    shellChanged |= ImGui::SliderFloat("Coverage radius", &_shell.radius, 1.0f, 10.0f, "%.2f");
+    shellChanged |= ImGui::SliderInt("Shell count", &_shell.count, 1, 128);
+    if (shellChanged)
+    {
+        _shellBufferTracker->SetData(Alias{_shell});
+    }
+
+    if (ImGui::ColorEdit4("Albedo", &_material.albedo.x))
+    {
+        _materialBufferTracker->SetData(Alias{_material});
+    }
+
+    bool lightChanged = false;
+    lightChanged |= ImGui::DragFloat3("Light direction", &_light.direction.x, 0.01f, -1.0f, 1.0f);
+    lightChanged |= ImGui::ColorEdit3("Light color", &_light.color.x);
+    lightChanged |= ImGui::SliderFloat("Ambient strength", &_light.ambientStrength, 0.0f, 1.0f);
+    if (lightChanged)
+    {
+        _lightBufferTracker->SetData(Alias{_light});
+    }
+
+    if (ImGui::CollapsingHeader("Camera"))
+    {
+        _camera->Debug_UI();
+    }
 
     _ui->EndWindow();
 }
