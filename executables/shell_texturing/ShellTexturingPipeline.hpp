@@ -18,7 +18,6 @@ namespace MFA
             glm::vec3 position{};
             glm::vec3 normal{};
             glm::vec2 uv{};
-            glm::vec3 center{};
         };
 
         struct alignas(16) Camera
@@ -28,10 +27,13 @@ namespace MFA
 
         struct alignas(16) Shell
         {
-            float displacement = 0.015f;
-            float radius = 4.0f;
-            int32_t count = 48;
-            float placeholder0 = 0.0f;
+            float displacement = 0.615f;
+            float radius = 0.818f;
+            int32_t count = 127;
+            float attenuation = 2.33f;
+
+            int32_t density = 41;
+            glm::vec3 placeholder;
         };
 
         struct alignas(16) Model
@@ -41,7 +43,7 @@ namespace MFA
 
         struct alignas(16) Material
         {
-            glm::vec4 albedo{0.18f, 0.48f, 0.95f, 1.0f};
+            glm::vec4 albedo{46.f/255.f, 242.f/255.f, 64.f/255.f, 1.0f};
             int32_t albedoTexture = -1;
             std::array<int32_t, 3> alignmentPadding{};
             glm::vec4 placeholder0{};
@@ -49,14 +51,14 @@ namespace MFA
 
         struct alignas(16) Light
         {
-            glm::vec3 direction{0.35f, 0.8f, 0.45f};
-            float ambientStrength = 0.25f;
+            glm::vec3 direction{1.0f, -1.0f, 1.0f};
+            float ambientStrength = 0.333f;
             glm::vec3 color{1.0f};
             float heightAttenuation = 1.0f;
         };
 
         static_assert(sizeof(Camera) == 64);
-        static_assert(sizeof(Shell) == 16);
+        static_assert(sizeof(Shell) == 32);
         static_assert(offsetof(Shell, radius) == 4);
         static_assert(offsetof(Shell, count) == 8);
         static_assert(sizeof(Model) == 64);

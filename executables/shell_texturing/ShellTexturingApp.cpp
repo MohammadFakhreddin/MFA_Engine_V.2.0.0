@@ -307,25 +307,20 @@ void ShellTexturingApp::PrepareCamera()
 
 void ShellTexturingApp::PrepareMesh()
 {
-    auto const [positions, indices, normals] = ShapeGenerator::Sphere(1.0f, _sliceCount, _stackCount);
+    auto const [positions, indices, normals, textureCoordinates] =
+        ShapeGenerator::Sphere(1.0f, _sphereSubdivisionCount);
 
     MFA_ASSERT(positions.size() == normals.size());
+    MFA_ASSERT(positions.size() == textureCoordinates.size());
     std::vector<ShellTexturingPipeline::Vertex> vertices{};
     vertices.reserve(positions.size());
-    for (int stack = 0; stack <= _stackCount; ++stack)
+    for (size_t vertexIndex = 0; vertexIndex < positions.size(); ++vertexIndex)
     {
-        for (int slice = 0; slice <= _sliceCount; ++slice)
-        {
-            auto const vertexIndex = static_cast<size_t>(stack * (_sliceCount + 1) + slice);
-            auto const u = static_cast<float>(slice) / static_cast<float>(_sliceCount);
-            auto const v = static_cast<float>(stack) / static_cast<float>(_stackCount);
-            vertices.emplace_back(ShellTexturingPipeline::Vertex{
-                .position = positions[vertexIndex],
-                .normal = normals[vertexIndex],
-                .uv = glm::vec2{u, v},
-                .center = glm::vec3{0.0f},
-            });
-        }
+        vertices.emplace_back(ShellTexturingPipeline::Vertex{
+            .position = positions[vertexIndex],
+            .normal = normals[vertexIndex],
+            .uv = textureCoordinates[vertexIndex],
+        });
     }
 
     MFA_ASSERT(vertices.empty() == false);
@@ -526,17 +521,18 @@ void ShellTexturingApp::DisplayParametersWindow()
     _ui->BeginWindow("Parameters");
 
     bool meshChanged = false;
-    meshChanged |= ImGui::SliderInt("Slice count", &_sliceCount, 3, 128);
-    meshChanged |= ImGui::SliderInt("Stack count", &_stackCount, 2, 128);
+    meshChanged |= ImGui::SliderInt("Sphere subdivisions", &_sphereSubdivisionCount, 0, 5);
     if (meshChanged)
     {
         _meshRebuildRequested = true;
     }
 
     bool shellChanged = false;
-    shellChanged |= ImGui::SliderFloat("Layer displacement", &_shell.displacement, 0.001f, 0.05f, "%.3f");
-    shellChanged |= ImGui::SliderFloat("Coverage radius", &_shell.radius, 1.0f, 10.0f, "%.2f");
+    shellChanged |= ImGui::SliderFloat("Fur height", &_shell.displacement, 0.001f, 0.8f, "%.3f");
+    shellChanged |= ImGui::SliderFloat("Hair radius", &_shell.radius, 0.001f, 1.0f, "%.3f");
     shellChanged |= ImGui::SliderInt("Shell count", &_shell.count, 1, 128);
+    shellChanged |= ImGui::SliderFloat("Shell height attenuation", &_shell.attenuation, 0.1f, 5.0f, "%.2f");
+    shellChanged |= ImGui::SliderInt("Shell density", &_shell.density, 1, 1000);
     if (shellChanged)
     {
         _shellBufferTracker->SetData(Alias{_shell});

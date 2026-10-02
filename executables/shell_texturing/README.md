@@ -1,6 +1,6 @@
 # Shell Texturing
 
-This example renders a UV sphere with instanced shell layers. The vertex shader expands each instance along the surface normal, while the fragment shader uses a deterministic per-vertex mask and height-based lighting to create the layered surface.
+This example renders an icosphere with instanced shell layers. The vertex shader expands each instance along the surface normal, while the fragment shader uses a deterministic per-vertex mask and height-based lighting to create the layered surface.
 
 ## Run
 
@@ -10,7 +10,7 @@ In VS Code, run the `Run Shell Texturing App (Debug)` task. The task builds the 
 
 - Drag with the left mouse button over the Scene window to orbit the camera.
 - Use the mouse wheel over the Scene window to zoom.
-- Adjust sphere slice/stack resolution, layer displacement, coverage radius, shell count, albedo, and lighting in the Parameters window.
+- Adjust the icosphere subdivision level, fur height, hair radius, shell count, shell-height attenuation, shell density, albedo, and lighting in the Parameters window.
 - `F5` recompiles and reloads the shell-texturing vertex and fragment shaders.
 - Resize the application or docked Scene window to recreate its render resources.
 - Close the window to exit.

@@ -100,8 +100,7 @@ private:
     std::unique_ptr<MFA::LocalBufferTracker> _vertexBufferTracker{};
     std::unique_ptr<MFA::LocalBufferTracker> _indexBufferTracker{};
     uint32_t _indexCount = 0;
-    int _sliceCount = 64;
-    int _stackCount = 48;
+    int _sphereSubdivisionCount = 5;
     bool _meshRebuildRequested = false;
 
     std::shared_ptr<MFA::RT::GpuTexture> _albedoTexture{};

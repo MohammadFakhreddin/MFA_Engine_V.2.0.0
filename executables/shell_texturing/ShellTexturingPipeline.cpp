@@ -250,7 +250,7 @@ void ShellTexturingPipeline::CreatePipeline()
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         },
     };
-    std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{
+    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{
         VkVertexInputAttributeDescription{
             .location = 0,
             .binding = 0,
@@ -269,12 +269,6 @@ void ShellTexturingPipeline::CreatePipeline()
             .format = VK_FORMAT_R32G32_SFLOAT,
             .offset = offsetof(Vertex, uv),
         },
-        VkVertexInputAttributeDescription{
-            .location = 3,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(Vertex, center),
-        },
     };
 
     std::array<VkDynamicState, 2> const dynamicStates{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
@@ -287,8 +281,7 @@ void ShellTexturingPipeline::CreatePipeline()
     RB::CreateGraphicPipelineOptions pipelineOptions{};
     pipelineOptions.useStaticViewportAndScissor = false;
     pipelineOptions.rasterizationSamples = LogicalDevice::GetMaxSampleCount();
-    // pipelineOptions.cullMode = VK_CULL_MODE_BACK_BIT;
-    pipelineOptions.cullMode = VK_CULL_MODE_NONE;
+    pipelineOptions.cullMode = VK_CULL_MODE_BACK_BIT;
     pipelineOptions.depthStencil.depthWriteEnable = VK_FALSE;
     pipelineOptions.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     pipelineOptions.dynamicStateCreateInfo = &dynamicStateInfo;
