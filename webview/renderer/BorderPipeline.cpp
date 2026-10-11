@@ -8,7 +8,7 @@
 #include <utility>
 
 
-namespace MFA
+namespace mfa
 {
 
 	//=================================================================

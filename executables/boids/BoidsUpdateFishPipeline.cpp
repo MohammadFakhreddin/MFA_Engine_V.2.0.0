@@ -9,7 +9,7 @@
 #include "RenderBackend.hpp"
 #include "vulkan/vulkan_core.h"
 
-using namespace MFA;
+using namespace mfa;
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -67,8 +67,8 @@ void BoidsUpdateFishPipeline::BindPipeline(RT::CommandRecordState & recordState)
 //----------------------------------------------------------------------------------------------------------------------
 
 void BoidsUpdateFishPipeline::BindFishes(
-    MFA::RT::CommandRecordState const & recordState,
-    MFA::RT::DescriptorSetGroup const & fishesDescriptorSet
+    mfa::RT::CommandRecordState const & recordState,
+    mfa::RT::DescriptorSetGroup const & fishesDescriptorSet
 ) const
 {
     RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)0, fishesDescriptorSet);
@@ -77,8 +77,8 @@ void BoidsUpdateFishPipeline::BindFishes(
 //----------------------------------------------------------------------------------------------------------------------
 
 void BoidsUpdateFishPipeline::BindCollisionTriangles(
-    MFA::RT::CommandRecordState const & recordState,
-    MFA::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSet
+    mfa::RT::CommandRecordState const & recordState,
+    mfa::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSet
 ) const
 {
     RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)1, collisionTrianglesDescriptorSet);
@@ -87,8 +87,8 @@ void BoidsUpdateFishPipeline::BindCollisionTriangles(
 //----------------------------------------------------------------------------------------------------------------------
 
 void BoidsUpdateFishPipeline::BindSimulationConstants(
-    MFA::RT::CommandRecordState const & recordState,
-    MFA::RT::DescriptorSetGroup const & simulationConstantsDescriptorSet
+    mfa::RT::CommandRecordState const & recordState,
+    mfa::RT::DescriptorSetGroup const & simulationConstantsDescriptorSet
 ) const
 {
     RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)2, simulationConstantsDescriptorSet);
@@ -113,8 +113,8 @@ void BoidsUpdateFishPipeline::SetPushConstants(
 //----------------------------------------------------------------------------------------------------------------------
 
 RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateFishDescriptorSets(
-    MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
-    MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
+    mfa::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+    mfa::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
 ) const
 {
     MFA_ASSERT(stateBuffer.buffers.size() == instanceBuffer.buffers.size());
@@ -159,9 +159,9 @@ RT::DescriptorSetGroup BoidsUpdateFishPipeline::CreateFishDescriptorSets(
 //----------------------------------------------------------------------------------------------------------------------
 
 void BoidsUpdateFishPipeline::UpdateFishDescriptorSets(
-    MFA::RT::DescriptorSetGroup & descriptorSetGroup,
-    MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
-    MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
+    mfa::RT::DescriptorSetGroup & descriptorSetGroup,
+    mfa::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+    mfa::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
 ) const
 {
     MFA_ASSERT(stateBuffer.buffers.size() == instanceBuffer.buffers.size());

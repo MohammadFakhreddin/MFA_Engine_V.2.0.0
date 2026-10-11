@@ -8,7 +8,7 @@
 #include <thread>
 #include <vulkan/vulkan.h>
 
-namespace MFA
+namespace mfa
 {
     class LogicalDevice
     {

@@ -4,7 +4,7 @@
 
 #include <SDL2/SDL_timer.h>
 
-namespace MFA
+namespace mfa
 {
     
     //==========================================================

@@ -18,6 +18,8 @@ list(
     "${CMAKE_CURRENT_SOURCE_DIR}/ShapeGenerator.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BlinnPhongPipeline.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BlinnPhongPipeline.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MeshUtils.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MeshUtils.hpp"
 )
 
 set(LIBRARY_NAME "Shared")

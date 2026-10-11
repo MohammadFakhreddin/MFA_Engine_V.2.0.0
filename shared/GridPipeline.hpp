@@ -5,7 +5,7 @@
 
 #include <glm/glm.hpp>
 
-class GridPipeline : public MFA::IShadingPipeline
+class GridPipeline : public mfa::IShadingPipeline
 {
 public:
 
@@ -28,12 +28,12 @@ public:
     ~GridPipeline();
 
     [[nodiscard]]
-    bool IsBinded(MFA::RT::CommandRecordState const& recordState) const;
+    bool IsBinded(mfa::RT::CommandRecordState const& recordState) const;
 
-    void BindPipeline(MFA::RT::CommandRecordState& recordState) const;
+    void BindPipeline(mfa::RT::CommandRecordState& recordState) const;
 
     void SetPushConstant(
-        MFA::RT::CommandRecordState &recordState,
+        mfa::RT::CommandRecordState &recordState,
         PushConstants const &pushConstant
     ) const;
 
@@ -45,7 +45,7 @@ private:
 
 private:
 
-    std::shared_ptr<MFA::RT::PipelineGroup> mPipeline{};
+    std::shared_ptr<mfa::RT::PipelineGroup> mPipeline{};
     VkRenderPass mRenderPass{};
 
 };

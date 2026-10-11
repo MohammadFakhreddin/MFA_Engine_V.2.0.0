@@ -8,7 +8,7 @@
 
 #include <memory>
 
-namespace MFA
+namespace mfa
 {
 
 	class UI
@@ -196,8 +196,8 @@ namespace MFA
         std::shared_ptr<RT::GpuTexture> _fontTexture{};
         bool _hasFocus = false;
 
-        std::vector<std::shared_ptr<MFA::Blob>> _cpuVertexBuffers{};
-        std::vector<std::shared_ptr<MFA::Blob>> _cpuIndexBuffers{};
+        std::vector<std::shared_ptr<mfa::Blob>> _cpuVertexBuffers{};
+        std::vector<std::shared_ptr<mfa::Blob>> _cpuIndexBuffers{};
         std::vector<std::shared_ptr<RT::BufferAndMemory>> _gpuVertexBuffers{};
         std::vector<std::shared_ptr<RT::BufferAndMemory>> _gpuIndexBuffers{};
         

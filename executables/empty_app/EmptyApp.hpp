@@ -26,7 +26,7 @@ private:
 
     void Update(float deltaTime);
 
-    void Render(MFA::RT::CommandRecordState &recordState);
+    void Render(mfa::RT::CommandRecordState &recordState);
 
     void Resize();
 
@@ -45,13 +45,13 @@ private:
     // You need to be able to select and view objects in the editor window
     void DisplaySceneWindow();
 
-    std::shared_ptr<MFA::UI> _ui{};
-    std::unique_ptr<MFA::Time> _time{};
-    std::shared_ptr<MFA::SwapChainRenderResource> _swapChainResource{};
-    std::shared_ptr<MFA::DepthRenderResource> _depthResource{};
-    std::shared_ptr<MFA::MSSAA_RenderResource> _msaaResource{};
-    std::shared_ptr<MFA::DisplayRenderPass> _displayRenderPass{};
-    std::shared_ptr<MFA::RT::SamplerGroup> _sampler{};
+    std::shared_ptr<mfa::UI> _ui{};
+    std::unique_ptr<mfa::Time> _time{};
+    std::shared_ptr<mfa::SwapChainRenderResource> _swapChainResource{};
+    std::shared_ptr<mfa::DepthRenderResource> _depthResource{};
+    std::shared_ptr<mfa::MSSAA_RenderResource> _msaaResource{};
+    std::shared_ptr<mfa::DisplayRenderPass> _displayRenderPass{};
+    std::shared_ptr<mfa::RT::SamplerGroup> _sampler{};
 
     std::shared_ptr<SceneFrameBuffer> _sceneFrameBuffer{};
     std::shared_ptr<SceneRenderResource> _sceneRenderResource{};

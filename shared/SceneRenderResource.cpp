@@ -3,7 +3,7 @@
 #include "LogicalDevice.hpp"
 #include "RenderBackend.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 

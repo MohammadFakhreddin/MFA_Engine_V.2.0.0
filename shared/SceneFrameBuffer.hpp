@@ -24,6 +24,6 @@ public:
 private:
 
     std::shared_ptr<SceneRenderResource> _renderResource;
-    std::vector<std::unique_ptr<MFA::RT::FrameBuffer>> _frameBufferList;
+    std::vector<std::unique_ptr<mfa::RT::FrameBuffer>> _frameBufferList;
 
 };

@@ -34,7 +34,9 @@ layout(set = 2, binding = 0, std140) uniform ModelBuffer
 
 void main()
 {
-    uint shellIndex = uint(gl_InstanceIndex);
+    // Map ascending instance IDs to shells from furthest from the base surface
+    // to closest while keeping depth writes enabled.
+    uint shellIndex = uint(shell.count) - 1u - uint(gl_InstanceIndex);
     float shellHeight = float(shellIndex) / float(shell.count);
 
     // We remove inverse transpose of model matrix for normal calculation to compensate for non-uniform scaling. 
@@ -50,5 +52,5 @@ void main()
     outWorldNormal = normalize(mat3(camera.viewProjection) * worldNormal);
 
     outVertexIndex = float(gl_VertexIndex);
-    outInstanceIndex = uint(gl_InstanceIndex);
+    outInstanceIndex = shellIndex;
 }

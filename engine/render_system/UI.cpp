@@ -15,7 +15,7 @@
 // Emedded font
 // #include "Roboto-Regular.embed"
 
-namespace MFA
+namespace mfa
 {
 
     //-----------------------------------------------------------------------------

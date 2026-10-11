@@ -8,9 +8,9 @@
 #include <glm/glm.hpp>
 // TODO: Use spirv-reflect to make your life easier
 
-namespace MFA
+namespace mfa
 {
-    class BlinnPhongPipeline : public MFA::IShadingPipeline
+    class BlinnPhongPipeline : public mfa::IShadingPipeline
     {
     public:
 
@@ -117,9 +117,9 @@ namespace MFA
         ~BlinnPhongPipeline();
 
         [[nodiscard]]
-        bool IsBinded(MFA::RT::CommandRecordState const& recordState) const;
+        bool IsBinded(mfa::RT::CommandRecordState const& recordState) const;
 
-        void BindPipeline(MFA::RT::CommandRecordState& recordState) const;
+        void BindPipeline(mfa::RT::CommandRecordState& recordState) const;
 
         void Reload() override;
 
@@ -137,7 +137,7 @@ namespace MFA
             RT::GpuTexture const * textures
         ) const;
 
-        void BindCameraDescriptorSet(const MFA::RT::CommandRecordState& recordState, RT::DescriptorSetGroup const & descriptorSet) const;
+        void BindCameraDescriptorSet(const mfa::RT::CommandRecordState& recordState, RT::DescriptorSetGroup const & descriptorSet) const;
 
         void BindLightDescriptorSet(const RT::CommandRecordState& recordState, RT::DescriptorSetGroup const & descriptorSet) const;
 

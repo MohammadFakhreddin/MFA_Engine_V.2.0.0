@@ -2,7 +2,7 @@
 
 #include "BedrockAssert.hpp"
 
-namespace MFA::Log {
+namespace mfa::Log {
     void Debug(char const * message, ...)
     {
     #ifdef MFA_DEBUG

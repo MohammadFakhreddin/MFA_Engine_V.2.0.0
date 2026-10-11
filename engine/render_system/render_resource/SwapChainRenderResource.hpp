@@ -6,7 +6,7 @@
 #include <memory>
 #include <vulkan/vulkan_core.h>
 
-namespace MFA
+namespace mfa
 {
     class SwapChainRenderResource final : public RenderResource
     {

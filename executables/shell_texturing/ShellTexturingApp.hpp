@@ -5,6 +5,7 @@
 #ifndef MFA_SHELL_TEXTURING_APP_HPP
 #define MFA_SHELL_TEXTURING_APP_HPP
 
+#include "BedrockMath.hpp"
 #include "BufferTracker.hpp"
 #include "RenderTypes.hpp"
 #include "SceneRenderPass.hpp"
@@ -25,10 +26,9 @@ public:
     void Run();
 
 private:
-
     void Update(float deltaTime);
 
-    void Render(MFA::RT::CommandRecordState &recordState);
+    void Render(mfa::RT::CommandRecordState &recordState);
 
     void Resize();
 
@@ -40,9 +40,9 @@ private:
 
     void PrepareSceneRenderPass();
 
-    void PrepareCamera();
-
     void PrepareMesh();
+
+    void ApplySelectedMesh();
 
     void PrepareUniformBuffers();
 
@@ -52,7 +52,7 @@ private:
 
     void UpdateCamera(float deltaTime);
 
-    void UpdateBuffers(MFA::RT::CommandRecordState const &recordState);
+    void UpdateBuffers(mfa::RT::CommandRecordState const &recordState);
 
     void ApplyUI_Style();
 
@@ -60,13 +60,17 @@ private:
 
     void DisplaySceneWindow();
 
-    std::shared_ptr<MFA::UI> _ui{};
-    std::unique_ptr<MFA::Time> _time{};
-    std::shared_ptr<MFA::SwapChainRenderResource> _swapChainResource{};
-    std::shared_ptr<MFA::DepthRenderResource> _depthResource{};
-    std::shared_ptr<MFA::MSSAA_RenderResource> _msaaResource{};
-    std::shared_ptr<MFA::DisplayRenderPass> _displayRenderPass{};
-    std::shared_ptr<MFA::RT::SamplerGroup> _sampler{};
+    std::function<VkExtent2D()> const GetWindowSize = [this]() { return _sceneWindowSize; };
+
+    std::function<bool()> const IsWindowFocused = [this]() { return _sceneWindowFocused; };
+
+    std::shared_ptr<mfa::UI> _ui{};
+    std::unique_ptr<mfa::Time> _time{};
+    std::shared_ptr<mfa::SwapChainRenderResource> _swapChainResource{};
+    std::shared_ptr<mfa::DepthRenderResource> _depthResource{};
+    std::shared_ptr<mfa::MSSAA_RenderResource> _msaaResource{};
+    std::shared_ptr<mfa::DisplayRenderPass> _displayRenderPass{};
+    std::shared_ptr<mfa::RT::SamplerGroup> _sampler{};
 
     std::shared_ptr<SceneFrameBuffer> _sceneFrameBuffer{};
     std::shared_ptr<SceneRenderResource> _sceneRenderResource{};
@@ -82,36 +86,79 @@ private:
 
     int _activeImageIndex{};
 
-    std::unique_ptr<MFA::ArcballCamera> _camera{};
+    mfa::ShellTexturingPipeline::Light _light{};
 
-    MFA::ShellTexturingPipeline::Shell _shell{};
-    MFA::ShellTexturingPipeline::Model _model{};
-    MFA::ShellTexturingPipeline::Material _material{};
-    MFA::ShellTexturingPipeline::Light _light{};
+    std::unique_ptr<mfa::HostVisibleBufferTracker> _cameraBufferTracker{};
+    std::unique_ptr<mfa::HostVisibleBufferTracker> _shellBufferTracker{};
+    std::unique_ptr<mfa::HostVisibleBufferTracker> _modelBufferTracker{};
+    std::unique_ptr<mfa::HostVisibleBufferTracker> _materialBufferTracker{};
+    std::unique_ptr<mfa::HostVisibleBufferTracker> _lightBufferTracker{};
 
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _shellBufferTracker{};
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _modelBufferTracker{};
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _materialBufferTracker{};
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _lightBufferTracker{};
+    std::shared_ptr<mfa::RT::BufferGroup> _vertexBuffer{};
+    std::shared_ptr<mfa::RT::BufferGroup> _indexBuffer{};
+    std::unique_ptr<mfa::LocalBufferTracker> _vertexBufferTracker{};
+    std::unique_ptr<mfa::LocalBufferTracker> _indexBufferTracker{};
 
-    std::shared_ptr<MFA::RT::BufferGroup> _vertexBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _indexBuffer{};
-    std::unique_ptr<MFA::LocalBufferTracker> _vertexBufferTracker{};
-    std::unique_ptr<MFA::LocalBufferTracker> _indexBufferTracker{};
-    uint32_t _indexCount = 0;
-    int _sphereSubdivisionCount = 5;
-    bool _meshRebuildRequested = false;
+    enum class SelectedMesh : int
+    {
+        Sphere = 0,
+        Plane = 1,
+        Count = 2
+    };
+    SelectedMesh _selectedMesh = SelectedMesh::Plane;
 
-    std::shared_ptr<MFA::RT::GpuTexture> _albedoTexture{};
+    struct MeshSettings
+    {
+        uint32_t indexCount;
+        VkDeviceSize vertexOffset;
+        VkDeviceSize indexOffset;
 
-    std::unique_ptr<MFA::ShellTexturingPipeline> _pipeline{};
-    MFA::RT::DescriptorSetGroup _cameraDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _shellDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _modelDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _materialDescriptorSets{};
-    MFA::RT::DescriptorSetGroup _albedoTextureDescriptorSet{};
-    MFA::RT::DescriptorSetGroup _lightDescriptorSets{};
+        mfa::ShellTexturingPipeline::Shell shell;
+        mfa::ShellTexturingPipeline::Material material;
+        mfa::ArcballCamera camera;
+        mfa::ShellTexturingPipeline::Model model;
+    };
+    std::array<MeshSettings, (int)SelectedMesh::Count> _meshSettings{
+        {MeshSettings{
+             .shell = {.displacement = 0.276f, .radius = 0.154f, .count = 256, .attenuation = 1.60f, .density = 771},
+             .material = {.albedo = glm::vec4(239.f / 255.f, 237.f / 255.f, 196.f / 255.f, 1.0f), .albedoTexture = -1},
+             .camera = [this]() -> mfa::ArcballCamera
+             {
+                 using namespace mfa;
+                 mfa::ArcballCamera camera(GetWindowSize, IsWindowFocused);
+                 glm::vec3 constexpr cameraPosition{0.0f, -3.536f, -3.536f};
+                 camera.SetLocalPosition(cameraPosition);
+                 camera.SetLocalQuaternion(glm::quatLookAt(glm::normalize(cameraPosition), Math::UpVec3));
+                 camera.SetminDistance(2.0f);
+                 camera.SetmaxDistance(12.0f);
+                 return camera;
+             }(),
+             .model = {.model = glm::mat4(1.0f)}},
+         MeshSettings{
+             .shell = {.displacement = 0.1f, .radius = 0.05f, .count = 32, .attenuation = 1.0f, .density = 221},
+             .material = {.albedo = glm::vec4(46.f / 255.f, 242.f / 255.f, 64.f / 255.f, 1.0f), .albedoTexture = -1},
+             .camera = [this]() -> mfa::ArcballCamera
+             {
+                 using namespace mfa;
+                 mfa::ArcballCamera camera(GetWindowSize, IsWindowFocused);
+                 glm::vec3 constexpr cameraPosition{-1.894f, -2.179f, -2.768f};
+                 camera.SetLocalPosition(cameraPosition);
+                 camera.SetLocalQuaternion(glm::quatLookAt(glm::normalize(cameraPosition), Math::UpVec3));
+                 camera.SetminDistance(2.0f);
+                 camera.SetmaxDistance(12.0f);
+                 return camera;
+             }(),
+             .model = {.model = glm::mat4(1.0f)}}}};
+
+    std::shared_ptr<mfa::RT::GpuTexture> _albedoTexture{};
+
+    std::unique_ptr<mfa::ShellTexturingPipeline> _pipeline{};
+    mfa::RT::DescriptorSetGroup _cameraDescriptorSets{};
+    mfa::RT::DescriptorSetGroup _shellDescriptorSets{};
+    mfa::RT::DescriptorSetGroup _modelDescriptorSets{};
+    mfa::RT::DescriptorSetGroup _materialDescriptorSets{};
+    mfa::RT::DescriptorSetGroup _albedoTextureDescriptorSet{};
+    mfa::RT::DescriptorSetGroup _lightDescriptorSets{};
 };
 
 

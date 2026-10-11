@@ -5,7 +5,7 @@
 
 #include <SDL2/SDL_events.h>
 
-namespace MFA
+namespace mfa
 {
     class ArcballCamera : public PerspectiveCamera
     {

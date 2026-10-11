@@ -8,7 +8,7 @@
 #include <functional>
 #include <vector>
 
-namespace MFA
+namespace mfa
 {
 
     class ThreadPool

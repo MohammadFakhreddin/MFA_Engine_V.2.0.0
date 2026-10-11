@@ -4,7 +4,7 @@
 #include "BedrockLog.hpp"
 #include "BedrockFile.hpp"
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
 
 	//-------------------------------------------------------------------------------------------------

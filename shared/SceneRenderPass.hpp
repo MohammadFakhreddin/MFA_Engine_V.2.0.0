@@ -15,9 +15,9 @@ public:
     ~SceneRenderPass();
 
     // This is a special case so we don't need record state
-    void Begin(MFA::RT::CommandRecordState const & recordState, SceneFrameBuffer const & frameBuffer) const;
+    void Begin(mfa::RT::CommandRecordState const & recordState, SceneFrameBuffer const & frameBuffer) const;
 
-    void End(MFA::RT::CommandRecordState const & recordState);
+    void End(mfa::RT::CommandRecordState const & recordState);
 
     [[nodiscard]]
     VkRenderPass GetRenderPass() const;
@@ -29,6 +29,6 @@ private:
     VkFormat _imageFormat;
     VkFormat _depthFormat;
     VkSampleCountFlagBits _sampleCount;
-    std::unique_ptr<MFA::RT::RenderPass> _renderPass;
+    std::unique_ptr<mfa::RT::RenderPass> _renderPass;
 
 };

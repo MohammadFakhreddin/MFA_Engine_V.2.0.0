@@ -2,7 +2,7 @@
 
 #include <glm/gtx/quaternion.hpp>
 
-namespace MFA
+namespace mfa
 {
 
     class Rotation

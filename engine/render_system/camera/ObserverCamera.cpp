@@ -3,7 +3,7 @@
 #include "LogicalDevice.hpp"
 #include "UI.hpp"
 
-namespace MFA
+namespace mfa
 {
 	//-------------------------------------------------------------------------------------------------
 

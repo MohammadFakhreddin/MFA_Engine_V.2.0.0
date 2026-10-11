@@ -4,7 +4,7 @@
 
 #include "BedrockMemory.hpp"
 
-namespace MFA::File
+namespace mfa::File
 {
     std::shared_ptr<Blob> Read(std::string const & path);
 }

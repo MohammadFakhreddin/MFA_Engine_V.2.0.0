@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-namespace MFA
+namespace mfa
 {
     class ShellTexturingPipeline final : public IShadingPipeline
     {
@@ -27,12 +27,12 @@ namespace MFA
 
         struct alignas(16) Shell
         {
-            float displacement = 0.615f;
-            float radius = 0.818f;
-            int32_t count = 127;
-            float attenuation = 2.33f;
+            float displacement = 0.800f;
+            float radius = 0.275f;
+            int32_t count = 128;
+            float attenuation = 0.75f;
 
-            int32_t density = 41;
+            int32_t density = 322;
             glm::vec3 placeholder;
         };
 
@@ -52,8 +52,8 @@ namespace MFA
         struct alignas(16) Light
         {
             glm::vec3 direction{1.0f, -1.0f, 1.0f};
-            float ambientStrength = 0.333f;
-            glm::vec3 color{1.0f};
+            float ambientStrength = 0.204f;
+            glm::vec3 color{226.0f / 255.0f, 244.0f / 255.0f, 109.0f / 255.0f};
             float heightAttenuation = 1.0f;
         };
 

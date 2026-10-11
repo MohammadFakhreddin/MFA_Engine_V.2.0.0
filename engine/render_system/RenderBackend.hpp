@@ -19,7 +19,7 @@
 
 #include <glm/glm.hpp>
 
-namespace MFA::RenderBackend
+namespace mfa::RenderBackend
 {
     [[nodiscard]]
     SDL_Window * CreateWindow(
@@ -869,7 +869,7 @@ VkVertexInputAttributeDescription{                                              
     .offset = offsetof(structName, memberName)                                                      \
 }                                                                                                   \
 
-namespace MFA
+namespace mfa
 {
     namespace RB = RenderBackend;
 };

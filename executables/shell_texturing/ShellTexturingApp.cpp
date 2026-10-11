@@ -5,6 +5,7 @@
 #include "ShellTexturingApp.hpp"
 
 #include "BedrockAssert.hpp"
+#include "BedrockDeffer.hpp"
 #include "BedrockPath.hpp"
 #include "ImportTexture.hpp"
 #include "LogicalDevice.hpp"
@@ -18,7 +19,7 @@
 #include <memory>
 #include <vector>
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 
@@ -34,10 +35,7 @@ ShellTexturingApp::ShellTexturingApp()
     _msaaResource = std::make_shared<MSSAA_RenderResource>();
     _displayRenderPass = std::make_shared<DisplayRenderPass>(_swapChainResource, _depthResource, _msaaResource);
 
-    _sampler = RB::CreateSampler(
-        LogicalDevice::GetVkDevice(),
-        RB::CreateSamplerParams{.compareEnable = false}
-    );
+    _sampler = RB::CreateSampler(LogicalDevice::GetVkDevice(), RB::CreateSamplerParams{.compareEnable = false});
 
     _ui = std::make_shared<UI>(_displayRenderPass,
                                UI::Params{.lightMode = false,
@@ -63,9 +61,8 @@ ShellTexturingApp::ShellTexturingApp()
     LogicalDevice::ResizeEventSignal2.Register([this]() -> void { Resize(); });
 
     PrepareSceneRenderPass();
-    PrepareCamera();
-    PrepareMesh();
     PrepareUniformBuffers();
+    PrepareMesh();
     PreparePipeline();
     PrepareDescriptorSets();
 }
@@ -129,20 +126,13 @@ void ShellTexturingApp::Update(float deltaTime)
         return;
     }
 
-    if (_meshRebuildRequested == true)
-    {
-        LogicalDevice::DeviceWaitIdle();
-        PrepareMesh();
-        _meshRebuildRequested = false;
-    }
-
     UpdateCamera(deltaTime);
     _ui->Update();
 }
 
 //======================================================================================================================
 
-void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
+void ShellTexturingApp::Render(mfa::RT::CommandRecordState &recordState)
 {
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Graphic);
 
@@ -151,19 +141,14 @@ void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
     _sceneRenderPass->Begin(recordState, *_sceneFrameBuffer);
 
     _pipeline->BindPipeline(recordState);
-    _pipeline->BindDescriptorSets(
-        recordState,
-        _cameraDescriptorSets,
-        _shellDescriptorSets,
-        _modelDescriptorSets,
-        _materialDescriptorSets,
-        _albedoTextureDescriptorSet,
-        _lightDescriptorSets
-    );
+    _pipeline->BindDescriptorSets(recordState, _cameraDescriptorSets, _shellDescriptorSets, _modelDescriptorSets,
+                                  _materialDescriptorSets, _albedoTextureDescriptorSet, _lightDescriptorSets);
 
-    RB::BindVertexBuffer(recordState, *_vertexBuffer->buffers.front(), 0, 0);
-    RB::BindIndexBuffer(recordState, *_indexBuffer->buffers.front(), 0);
-    RB::DrawIndexed(recordState, _indexCount, static_cast<uint32_t>(_shell.count));
+    auto &settings = _meshSettings[static_cast<int>(_selectedMesh)];
+
+    RB::BindVertexBuffer(recordState, *_vertexBuffer->buffers.front(), 0, settings.vertexOffset);
+    RB::BindIndexBuffer(recordState, *_indexBuffer->buffers.front(), settings.indexOffset);
+    RB::DrawIndexed(recordState, settings.indexCount, static_cast<uint32_t>(settings.shell.count));
 
     _sceneRenderPass->End(recordState);
 
@@ -180,9 +165,9 @@ void ShellTexturingApp::Render(MFA::RT::CommandRecordState &recordState)
 
 void ShellTexturingApp::Resize()
 {
-    if (_camera != nullptr)
+    for (auto &meshSetting : _meshSettings)
     {
-        _camera->SetProjectionDirty();
+        meshSetting.camera.SetProjectionDirty();
     }
     _sceneWindowResized = true;
 }
@@ -292,88 +277,109 @@ void ShellTexturingApp::PrepareSceneRenderPass()
 
 //======================================================================================================================
 
-void ShellTexturingApp::PrepareCamera()
-{
-    _camera = std::make_unique<ArcballCamera>(
-        [this]() -> VkExtent2D { return _sceneWindowSize; },
-        [this]() -> bool { return _sceneWindowFocused; }
-    );
-    _camera->SetLocalPosition(glm::vec3{0.0f, 0.0f, -4.0f});
-    _camera->SetminDistance(2.0f);
-    _camera->SetmaxDistance(12.0f);
-}
-
-//======================================================================================================================
-
 void ShellTexturingApp::PrepareMesh()
 {
-    auto const [positions, indices, normals, textureCoordinates] =
-        ShapeGenerator::Sphere(1.0f, _sphereSubdivisionCount);
+    std::vector<ShellTexturingPipeline::Vertex> allVertices{};
+    std::vector<uint32_t> allIndices{};
 
-    MFA_ASSERT(positions.size() == normals.size());
-    MFA_ASSERT(positions.size() == textureCoordinates.size());
-    std::vector<ShellTexturingPipeline::Vertex> vertices{};
-    vertices.reserve(positions.size());
-    for (size_t vertexIndex = 0; vertexIndex < positions.size(); ++vertexIndex)
+    ShapeGenerator::Vertices tempPositions{};
+    ShapeGenerator::Indices tempIndices{};
+    ShapeGenerator::Normals tempNormals{};
+    ShapeGenerator::TextureCoordinates tempTextureCoordinates{};
+
+    auto const clearTempMesh = [&]() -> void
     {
-        vertices.emplace_back(ShellTexturingPipeline::Vertex{
-            .position = positions[vertexIndex],
-            .normal = normals[vertexIndex],
-            .uv = textureCoordinates[vertexIndex],
-        });
+        tempPositions.clear();
+        tempIndices.clear();
+        tempNormals.clear();
+        tempTextureCoordinates.clear();
+    };
+
+    auto const appendTempMesh = [&]() -> void
+    {
+        MFA_ASSERT(tempPositions.size() == tempNormals.size());
+        MFA_ASSERT(tempPositions.size() == tempTextureCoordinates.size());
+
+        allVertices.reserve(allVertices.size() + tempPositions.size());
+        for (size_t vertexIndex = 0; vertexIndex < tempPositions.size(); ++vertexIndex)
+        {
+            allVertices.emplace_back(ShellTexturingPipeline::Vertex{
+                .position = tempPositions[vertexIndex],
+                .normal = tempNormals[vertexIndex],
+                .uv = tempTextureCoordinates[vertexIndex],
+            });
+        }
+        allIndices.insert(allIndices.end(), tempIndices.begin(), tempIndices.end());
+    };
+
+    {
+        clearTempMesh();
+        ShapeGenerator::PlaneNoAlloc(2.0f, 2.0f, 10, 10, tempPositions, tempIndices, tempNormals,
+                                     tempTextureCoordinates);
+
+        auto &settings = _meshSettings[static_cast<int>(SelectedMesh::Plane)];
+        settings.vertexOffset = allVertices.size() * sizeof(ShellTexturingPipeline::Vertex);
+        settings.indexOffset = allIndices.size() * sizeof(uint32_t);
+        settings.indexCount = static_cast<uint32_t>(tempIndices.size());
+
+        appendTempMesh();
+    }
+    {
+        clearTempMesh();
+        ShapeGenerator::SphereNoAlloc(1.0f, 4, tempPositions, tempIndices, tempNormals, tempTextureCoordinates);
+
+        auto &settings = _meshSettings[static_cast<int>(SelectedMesh::Sphere)];
+        settings.vertexOffset = allVertices.size() * sizeof(ShellTexturingPipeline::Vertex);
+        settings.indexOffset = allIndices.size() * sizeof(uint32_t);
+        settings.indexCount = static_cast<uint32_t>(tempIndices.size());
+
+        appendTempMesh();
     }
 
-    MFA_ASSERT(vertices.empty() == false);
-    MFA_ASSERT(indices.empty() == false);
-    _indexCount = static_cast<uint32_t>(indices.size());
+    MFA_ASSERT(allVertices.empty() == false);
+    MFA_ASSERT(allIndices.empty() == false);
 
     auto const device = LogicalDevice::GetVkDevice();
     auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
-    auto const vertexBufferSize = sizeof(ShellTexturingPipeline::Vertex) * vertices.size();
-    auto const indexBufferSize = sizeof(uint32_t) * indices.size();
+    auto const vertexBufferSize = sizeof(ShellTexturingPipeline::Vertex) * allVertices.size();
+    auto const indexBufferSize = sizeof(uint32_t) * allIndices.size();
 
     _vertexBuffer = RB::CreateVertexBufferGroup(device, physicalDevice, vertexBufferSize, 1);
-    _indexBuffer = RB::CreateBufferGroup(
-        device,
-        physicalDevice,
-        indexBufferSize,
-        1,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+    _indexBuffer = RB::CreateBufferGroup(device, physicalDevice, indexBufferSize, 1,
+                                         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     _vertexBufferTracker = std::make_unique<LocalBufferTracker>(
-        _vertexBuffer,
-        RB::CreateStageBuffer(device, physicalDevice, vertexBufferSize, 1),
-        Alias{vertices.data(), vertices.size()}
-    );
+        _vertexBuffer, RB::CreateStageBuffer(device, physicalDevice, vertexBufferSize, 1),
+        Alias{allVertices.data(), allVertices.size()});
     _indexBufferTracker = std::make_unique<LocalBufferTracker>(
-        _indexBuffer,
-        RB::CreateStageBuffer(device, physicalDevice, indexBufferSize, 1),
-        Alias{indices.data(), indices.size()}
-    );
+        _indexBuffer, RB::CreateStageBuffer(device, physicalDevice, indexBufferSize, 1),
+        Alias{allIndices.data(), allIndices.size()});
 
     if (_albedoTexture == nullptr)
     {
         auto const cpuTexture = Importer::ErrorTexture();
         auto commandBuffer = RB::BeginSingleTimeCommand(device, *LogicalDevice::GetGraphicCommandPool());
         std::array<uint8_t, 1> mipLevels{0};
-        auto [texture, stagingBuffer] = RB::CreateTexture(
-            *cpuTexture,
-            device,
-            physicalDevice,
-            commandBuffer,
-            static_cast<int>(mipLevels.size()),
-            mipLevels.data()
-        );
-        RB::EndAndSubmitSingleTimeCommand(
-            device,
-            *LogicalDevice::GetGraphicCommandPool(),
-            LogicalDevice::GetGraphicQueue(),
-            commandBuffer
-        );
+        auto [texture, stagingBuffer] = RB::CreateTexture(*cpuTexture, device, physicalDevice, commandBuffer,
+                                                          static_cast<int>(mipLevels.size()), mipLevels.data());
+        RB::EndAndSubmitSingleTimeCommand(device, *LogicalDevice::GetGraphicCommandPool(),
+                                          LogicalDevice::GetGraphicQueue(), commandBuffer);
         (void)stagingBuffer;
         _albedoTexture = std::move(texture);
     }
+}
+
+//======================================================================================================================
+
+void ShellTexturingApp::ApplySelectedMesh()
+{
+    int meshIndex = static_cast<int>(_selectedMesh);
+    auto &settings = _meshSettings[meshIndex];
+    _shellBufferTracker->SetData(Alias{settings.shell});
+    _materialBufferTracker->SetData(Alias{settings.material});
+    ShellTexturingPipeline::Camera const cameraData{.viewProjection = settings.camera.ViewProjection()};
+    _cameraBufferTracker->SetData(Alias{cameraData});
+    _modelBufferTracker->SetData(Alias{settings.model});
 }
 
 //======================================================================================================================
@@ -384,27 +390,28 @@ void ShellTexturingApp::PrepareUniformBuffers()
     auto const physicalDevice = LogicalDevice::GetPhysicalDevice();
     auto const frameCount = LogicalDevice::GetMaxFramePerFlight();
 
-    ShellTexturingPipeline::Camera const camera{.viewProjection = _camera->ViewProjection()};
+    auto selectedMeshIndex = static_cast<int>(_selectedMesh);
+    auto &settings = _meshSettings[selectedMeshIndex];
+
     _cameraBufferTracker = std::make_unique<HostVisibleBufferTracker>(
-        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(camera), frameCount),
-        Alias{camera}
-    );
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(ShellTexturingPipeline::Camera), frameCount),
+        Alias{ShellTexturingPipeline::Camera{.viewProjection = settings.camera.ViewProjection()}});
+
     _shellBufferTracker = std::make_unique<HostVisibleBufferTracker>(
-        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_shell), frameCount),
-        Alias{_shell}
-    );
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(ShellTexturingPipeline::Shell), frameCount),
+        Alias{settings.shell});
+
     _modelBufferTracker = std::make_unique<HostVisibleBufferTracker>(
-        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_model), frameCount),
-        Alias{_model}
-    );
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(ShellTexturingPipeline::Model), frameCount),
+        Alias{settings.model});
+
     _materialBufferTracker = std::make_unique<HostVisibleBufferTracker>(
-        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_material), frameCount),
-        Alias{_material}
-    );
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(ShellTexturingPipeline::Material),
+                                           frameCount),
+        Alias{settings.material});
+
     _lightBufferTracker = std::make_unique<HostVisibleBufferTracker>(
-        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_light), frameCount),
-        Alias{_light}
-    );
+        RB::CreateHostVisibleUniformBuffer(device, physicalDevice, sizeof(_light), frameCount), Alias{_light});
 }
 
 //======================================================================================================================
@@ -430,11 +437,12 @@ void ShellTexturingApp::PrepareDescriptorSets()
 
 void ShellTexturingApp::UpdateCamera(float const deltaTime)
 {
-    _camera->Update(deltaTime);
-    if (_camera->IsDirty())
+    auto &camera = _meshSettings[static_cast<int>(_selectedMesh)].camera;
+    camera.Update(deltaTime);
+    if (camera.IsDirty())
     {
-        ShellTexturingPipeline::Camera const camera{.viewProjection = _camera->ViewProjection()};
-        _cameraBufferTracker->SetData(Alias{camera});
+        ShellTexturingPipeline::Camera const data{.viewProjection = camera.ViewProjection()};
+        _cameraBufferTracker->SetData(Alias{data});
     }
 }
 
@@ -519,28 +527,39 @@ void ShellTexturingApp::ApplyUI_Style()
 void ShellTexturingApp::DisplayParametersWindow()
 {
     _ui->BeginWindow("Parameters");
+    MFA_DEFFER([this]() -> void { _ui->EndWindow(); });
 
-    bool meshChanged = false;
-    meshChanged |= ImGui::SliderInt("Sphere subdivisions", &_sphereSubdivisionCount, 0, 5);
-    if (meshChanged)
+    int selectedMesh = static_cast<int>(_selectedMesh);
+
+    constexpr std::array meshNames{"Sphere", "Plane"};
+    if (ImGui::Combo("Mesh", &selectedMesh, meshNames.data(), static_cast<int>(meshNames.size())))
     {
-        _meshRebuildRequested = true;
+        _selectedMesh = static_cast<SelectedMesh>(selectedMesh);
+        ApplySelectedMesh();
+        return;
     }
 
-    bool shellChanged = false;
-    shellChanged |= ImGui::SliderFloat("Fur height", &_shell.displacement, 0.001f, 0.8f, "%.3f");
-    shellChanged |= ImGui::SliderFloat("Hair radius", &_shell.radius, 0.001f, 1.0f, "%.3f");
-    shellChanged |= ImGui::SliderInt("Shell count", &_shell.count, 1, 128);
-    shellChanged |= ImGui::SliderFloat("Shell height attenuation", &_shell.attenuation, 0.1f, 5.0f, "%.2f");
-    shellChanged |= ImGui::SliderInt("Shell density", &_shell.density, 1, 1000);
-    if (shellChanged)
-    {
-        _shellBufferTracker->SetData(Alias{_shell});
+    { // Shell settings
+        auto &shell = _meshSettings[static_cast<int>(_selectedMesh)].shell;
+
+        bool shellChanged = false;
+        shellChanged |= ImGui::SliderFloat("Fur height", &shell.displacement, 0.001f, 0.8f, "%.3f");
+        shellChanged |= ImGui::SliderFloat("Hair radius", &shell.radius, 0.001f, 1.0f, "%.3f");
+        shellChanged |= ImGui::SliderInt("Shell count", &shell.count, 1, 512);
+        shellChanged |= ImGui::SliderFloat("Shell height attenuation", &shell.attenuation, 0.1f, 5.0f, "%.2f");
+        shellChanged |= ImGui::SliderInt("Shell density", &shell.density, 1, 1000);
+        if (shellChanged)
+        {
+            _shellBufferTracker->SetData(Alias{shell});
+        }
     }
 
-    if (ImGui::ColorEdit4("Albedo", &_material.albedo.x))
-    {
-        _materialBufferTracker->SetData(Alias{_material});
+    { // Material settings
+        auto &material = _meshSettings[static_cast<int>(_selectedMesh)].material;
+        if (ImGui::ColorEdit4("Albedo", &material.albedo.x))
+        {
+            _materialBufferTracker->SetData(Alias{material});
+        }
     }
 
     bool lightChanged = false;
@@ -554,10 +573,8 @@ void ShellTexturingApp::DisplayParametersWindow()
 
     if (ImGui::CollapsingHeader("Camera"))
     {
-        _camera->Debug_UI();
+        _meshSettings[static_cast<int>(_selectedMesh)].camera.Debug_UI();
     }
-
-    _ui->EndWindow();
 }
 
 //======================================================================================================================

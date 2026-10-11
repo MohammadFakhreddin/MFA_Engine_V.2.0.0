@@ -7,7 +7,7 @@
 #include "JobSystem.hpp"
 #include "LogicalDevice.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 int main()
 {

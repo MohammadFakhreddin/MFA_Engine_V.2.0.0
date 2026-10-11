@@ -3,7 +3,7 @@
 #include "BufferTracker.hpp"
 #include "SolidFillPipeline.hpp"
 
-namespace MFA
+namespace mfa
 {
 	class SolidFillRenderer
 	{

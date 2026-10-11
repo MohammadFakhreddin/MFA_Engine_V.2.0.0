@@ -1,6 +1,6 @@
 #include "BedrockString.hpp"
 
-namespace MFA::String
+namespace mfa::String
 {
     // https://en.cppreference.com/w/cpp/string/byte/tolower
     std::string ToLowerCase(std::string s)

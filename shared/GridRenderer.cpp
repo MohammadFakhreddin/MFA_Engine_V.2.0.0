@@ -4,7 +4,7 @@
 #include "RenderBackend.hpp"
 #include "ShapeGenerator.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 

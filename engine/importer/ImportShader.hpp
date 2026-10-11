@@ -6,7 +6,7 @@
 #include "AssetShader.hpp"
 #include "BedrockMemory.hpp"
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
 
     std::shared_ptr<AS::Shader> ShaderFromSPV(

@@ -9,7 +9,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/norm.hpp>
 
-namespace MFA::Math 
+namespace mfa::Math 
 {
 
     inline static constexpr glm::vec4 ForwardVec4W1{ 0.0f, 0.0f, 1.0f, 1.0f };
@@ -23,6 +23,7 @@ namespace MFA::Math
     inline static constexpr glm::vec3 ForwardVec3{ 0.0f, 0.0f, 1.0f };
     inline static constexpr glm::vec3 RightVec3{ 1.0f, 0.0f, 0.0f };
     inline static constexpr glm::vec3 UpVec3{ 0.0f, 1.0f, 0.0f };
+    inline static constexpr glm::vec3 ZeroVec3{ 0.0f, 0.0f, 0.0f };
 
     inline static constexpr glm::dvec4 DForwardVec4W1{ 0.0f, 0.0f, 1.0f, 1.0f };
     inline static constexpr glm::dvec4 DRightVec4W1{ 1.0f, 0.0f, 0.0f, 1.0f };

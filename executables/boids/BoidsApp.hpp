@@ -50,7 +50,7 @@ private:
 
     void Update(float deltaTime);
 
-    void Render(MFA::RT::CommandRecordState &recordState);
+    void Render(mfa::RT::CommandRecordState &recordState);
 
     void Resize();
 
@@ -77,8 +77,8 @@ private:
     static std::vector<CollisionTriangle> ExtractCollisionTriangles(
         uint32_t vertexCount,
         uint32_t indexCount,
-        MFA::AS::GLTF::Vertex * vertices,
-        MFA::AS::GLTF::Index * indices
+        mfa::AS::GLTF::Vertex * vertices,
+        mfa::AS::GLTF::Index * indices
     );
 
     [[nodiscard]]
@@ -97,7 +97,7 @@ private:
 
     void UpdateCamera(float deltaTime);
 
-    void UpdateBufferTrackers(MFA::RT::CommandRecordState const & recordState);
+    void UpdateBufferTrackers(mfa::RT::CommandRecordState const & recordState);
 
     void ApplyUI_Style();
 
@@ -109,13 +109,13 @@ private:
     void DisplaySceneWindow();
 
     // Framework params
-    std::shared_ptr<MFA::UI> _ui{};
-    std::unique_ptr<MFA::Time> _time{};
-    std::shared_ptr<MFA::SwapChainRenderResource> _swapChainResource{};
-    std::shared_ptr<MFA::DepthRenderResource> _depthResource{};
-    std::shared_ptr<MFA::MSSAA_RenderResource> _msaaResource{};
-    std::shared_ptr<MFA::DisplayRenderPass> _displayRenderPass{};
-    std::shared_ptr<MFA::RT::SamplerGroup> _sampler{};
+    std::shared_ptr<mfa::UI> _ui{};
+    std::unique_ptr<mfa::Time> _time{};
+    std::shared_ptr<mfa::SwapChainRenderResource> _swapChainResource{};
+    std::shared_ptr<mfa::DepthRenderResource> _depthResource{};
+    std::shared_ptr<mfa::MSSAA_RenderResource> _msaaResource{};
+    std::shared_ptr<mfa::DisplayRenderPass> _displayRenderPass{};
+    std::shared_ptr<mfa::RT::SamplerGroup> _sampler{};
 
     std::shared_ptr<SceneFrameBuffer> _sceneFrameBuffer{};
     std::shared_ptr<SceneRenderResource> _sceneRenderResource{};
@@ -140,23 +140,23 @@ private:
     };
 
     // TODO: Replace ArcballCamera with ObserverCamera
-    // std::unique_ptr<MFA::ObserverCamera> _camera{};
-    std::unique_ptr<MFA::ArcballCamera> _camera{};
+    // std::unique_ptr<mfa::ObserverCamera> _camera{};
+    std::unique_ptr<mfa::ArcballCamera> _camera{};
     // Rendering buffers
-    std::unique_ptr<MFA::HostVisibleBufferTracker> _cameraBufferTracker{};
-    std::unique_ptr<MFA::LocalBufferTracker> _lightBufferTracker{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneVertexBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneModelsBuffer{};                 
-    std::shared_ptr<MFA::RT::BufferGroup> _fishModelsBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _fishMaterialsBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneMaterialsBuffer{};               
-    std::shared_ptr<MFA::RT::BufferGroup> _materialBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneIndexBuffer{};
-    std::array<std::shared_ptr<MFA::RT::GpuTexture>, 2> _materialTextures{};
+    std::unique_ptr<mfa::HostVisibleBufferTracker> _cameraBufferTracker{};
+    std::unique_ptr<mfa::LocalBufferTracker> _lightBufferTracker{};
+    std::shared_ptr<mfa::RT::BufferGroup> _sceneVertexBuffer{};
+    std::shared_ptr<mfa::RT::BufferGroup> _sceneModelsBuffer{};                 
+    std::shared_ptr<mfa::RT::BufferGroup> _fishModelsBuffer{};
+    std::shared_ptr<mfa::RT::BufferGroup> _fishMaterialsBuffer{};
+    std::shared_ptr<mfa::RT::BufferGroup> _sceneMaterialsBuffer{};               
+    std::shared_ptr<mfa::RT::BufferGroup> _materialBuffer{};
+    std::shared_ptr<mfa::RT::BufferGroup> _sceneIndexBuffer{};
+    std::array<std::shared_ptr<mfa::RT::GpuTexture>, 2> _materialTextures{};
     // Compute buffers
-    std::unique_ptr<MFA::LocalBufferTracker> _simulationConstantsBufferTracker{};
-    std::shared_ptr<MFA::RT::BufferGroup> _fishStateBuffer{};
-    std::shared_ptr<MFA::RT::BufferGroup> _sceneCollisionTriangleBuffer{};
+    std::unique_ptr<mfa::LocalBufferTracker> _simulationConstantsBufferTracker{};
+    std::shared_ptr<mfa::RT::BufferGroup> _fishStateBuffer{};
+    std::shared_ptr<mfa::RT::BufferGroup> _sceneCollisionTriangleBuffer{};
 
     BufferMetadata _fishMeshMetadata{};
     BufferMetadata _fishInstanceMetadata{};
@@ -171,15 +171,15 @@ private:
     BufferMetadata _torusMaterialMetadata{};
 
     // Rendering params
-    std::unique_ptr<MFA::BlinnPhongPipeline> _pShadingGraphic{};
+    std::unique_ptr<mfa::BlinnPhongPipeline> _pShadingGraphic{};
     std::unique_ptr<BoidsUpdateFishPipeline> _pUpdateFishCompute{};
-    MFA::RT::DescriptorSetGroup _dsCamera{};
-    MFA::RT::DescriptorSetGroup _dsLighting{};
-    MFA::RT::DescriptorSetGroup _dsMaterial{};
+    mfa::RT::DescriptorSetGroup _dsCamera{};
+    mfa::RT::DescriptorSetGroup _dsLighting{};
+    mfa::RT::DescriptorSetGroup _dsMaterial{};
 
-    std::optional<MFA::RT::DescriptorSetGroup> _dsUpdateFish{};
-    MFA::RT::DescriptorSetGroup _dsColliders{};
-    MFA::RT::DescriptorSetGroup _dsConstants{};
+    std::optional<mfa::RT::DescriptorSetGroup> _dsUpdateFish{};
+    mfa::RT::DescriptorSetGroup _dsColliders{};
+    mfa::RT::DescriptorSetGroup _dsConstants{};
 
     // Simulation params
     bool _play = true;

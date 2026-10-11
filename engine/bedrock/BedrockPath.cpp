@@ -12,15 +12,15 @@ static bool LogCalledOnce = false;
 
 //-------------------------------------------------------------------------------------------------
 
-std::unique_ptr<MFA::Path> MFA::Path::Init()
+std::unique_ptr<mfa::Path> mfa::Path::Init()
 {
     MFA_ASSERT(_instance == nullptr);
-	return std::make_unique<MFA::Path>();
+	return std::make_unique<mfa::Path>();
 }
 
 //-------------------------------------------------------------------------------------------------
 
-MFA::Path::Path()
+mfa::Path::Path()
 {
     _instance = this;
 #if defined(ASSET_DIR)
@@ -57,7 +57,7 @@ MFA::Path::Path()
 
 //-------------------------------------------------------------------------------------------------
 
-MFA::Path::~Path()
+mfa::Path::~Path()
 {
     MFA_ASSERT(_instance == this);
     _instance = nullptr;
@@ -65,14 +65,14 @@ MFA::Path::~Path()
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::Get(std::string const & address)
+std::string mfa::Path::Get(std::string const & address)
 {
 	return Get(address.c_str());
 }
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::Get(char const * address)
+std::string mfa::Path::Get(char const * address)
 {
     if (_instance == nullptr)
     {
@@ -92,7 +92,7 @@ std::string MFA::Path::Get(char const * address)
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::Get(char const * address, char const * relativePath)
+std::string mfa::Path::Get(char const * address, char const * relativePath)
 {
     if (std::strncmp(address, "./", 2) == 0 ||
         std::strncmp(address, "/", 1) == 0 ||
@@ -105,7 +105,7 @@ std::string MFA::Path::Get(char const * address, char const * relativePath)
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::Relative(char const *address)
+std::string mfa::Path::Relative(char const *address)
 {
     if (_instance == nullptr)
     {
@@ -120,7 +120,7 @@ std::string MFA::Path::Relative(char const *address)
 
 //-------------------------------------------------------------------------------------------------
 
-std::string MFA::Path::AssetPath()
+std::string mfa::Path::AssetPath()
 {
     if (_instance == nullptr)
     {

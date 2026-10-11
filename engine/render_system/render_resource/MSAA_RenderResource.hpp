@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-namespace MFA
+namespace mfa
 {
     class MSSAA_RenderResource final : public RenderResource
     {

@@ -5,7 +5,7 @@
 
 #include "../job_system/ThreadSafeQueue.hpp"
 
-namespace MFA
+namespace mfa
 {
 
     class Time

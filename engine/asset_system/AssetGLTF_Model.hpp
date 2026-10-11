@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-namespace MFA::Asset::GLTF
+namespace mfa::Asset::GLTF
 {
 	class Model
 	{

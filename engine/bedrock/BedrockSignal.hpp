@@ -8,7 +8,7 @@
 #include "BedrockAssert.hpp"
 
 // TODO Make this file thread safe by having a queue of tasks
-namespace MFA
+namespace mfa
 {
     template<typename ... ArgsT>
     class Signal

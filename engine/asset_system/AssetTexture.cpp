@@ -2,7 +2,7 @@
 
 #include "BedrockAssert.hpp"
 
-namespace MFA::Asset
+namespace mfa::Asset
 {
 
 	//-------------------------------------------------------------------------------------------------

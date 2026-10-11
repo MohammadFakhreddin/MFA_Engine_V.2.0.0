@@ -6,7 +6,7 @@
 #include "LogicalDevice.hpp"
 #include "RenderBackend.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 
@@ -25,7 +25,7 @@ GridPipeline::~GridPipeline()
 
 //======================================================================================================================
 
-bool GridPipeline::IsBinded(MFA::RT::CommandRecordState const &recordState) const
+bool GridPipeline::IsBinded(mfa::RT::CommandRecordState const &recordState) const
 {
     if (recordState.pipeline == mPipeline.get())
     {
@@ -36,7 +36,7 @@ bool GridPipeline::IsBinded(MFA::RT::CommandRecordState const &recordState) cons
 
 //======================================================================================================================
 
-void GridPipeline::BindPipeline(MFA::RT::CommandRecordState &recordState) const
+void GridPipeline::BindPipeline(mfa::RT::CommandRecordState &recordState) const
 {
     if (IsBinded(recordState))
     {

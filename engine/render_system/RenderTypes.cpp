@@ -9,7 +9,7 @@
 
 #include <utility>
 
-namespace MFA::RenderTypes
+namespace mfa::RenderTypes
 {
 	//-------------------------------------------------------------------------------------------------
 

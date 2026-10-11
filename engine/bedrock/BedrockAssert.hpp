@@ -51,4 +51,4 @@ bool constexpr MFA_VERIFY(bool const condition) {
     return false;
 }
 
-namespace MFA::Assert {} // namespace MFA::Assert
+namespace mfa::Assert {} // namespace mfa::Assert

@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
 
     [[nodiscard]]

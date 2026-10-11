@@ -4,7 +4,7 @@
 #include <string>
 
 //https://stackoverflow.com/questions/4815423/how-do-i-set-the-working-directory-to-the-solution-directory
-namespace MFA
+namespace mfa
 {
 	class Path
 	{

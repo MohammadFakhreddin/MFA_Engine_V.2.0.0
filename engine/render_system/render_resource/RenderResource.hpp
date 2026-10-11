@@ -1,6 +1,6 @@
 #pragma once
 
-namespace MFA
+namespace mfa
 {
     class RenderResource
     {

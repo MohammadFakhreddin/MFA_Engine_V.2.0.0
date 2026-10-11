@@ -5,13 +5,13 @@
 #include "ImportShader.hpp"
 #include "LogicalDevice.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 //-------------------------------------------------------------------------------------------------
 
 TextOverlayPipeline::TextOverlayPipeline(
-	std::shared_ptr<MFA::DisplayRenderPass> displayRenderPass,
-	std::shared_ptr<MFA::RT::SamplerGroup> sampler
+	std::shared_ptr<mfa::DisplayRenderPass> displayRenderPass,
+	std::shared_ptr<mfa::RT::SamplerGroup> sampler
 )
 	: _displayRenderPass(std::move(displayRenderPass))
 	, _sampler(std::move(sampler))
@@ -124,7 +124,7 @@ void TextOverlayPipeline::SetPushConstant(
 
 //-------------------------------------------------------------------------------------------------
 
-void MFA::TextOverlayPipeline::Reload()
+void mfa::TextOverlayPipeline::Reload()
 {
     CreatePipeline();
 }

@@ -5,7 +5,7 @@
 
 #include <thread>
 
-namespace MFA {
+namespace mfa {
 
     ScopeProfiler::ScopeProfiler(std::string text)
         : _text(std::move(text))

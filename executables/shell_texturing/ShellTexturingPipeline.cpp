@@ -10,7 +10,7 @@
 #include <array>
 #include <vector>
 
-using namespace MFA;
+using namespace mfa;
 
 namespace
 {
@@ -281,8 +281,9 @@ void ShellTexturingPipeline::CreatePipeline()
     RB::CreateGraphicPipelineOptions pipelineOptions{};
     pipelineOptions.useStaticViewportAndScissor = false;
     pipelineOptions.rasterizationSamples = LogicalDevice::GetMaxSampleCount();
-    pipelineOptions.cullMode = VK_CULL_MODE_BACK_BIT;
-    pipelineOptions.depthStencil.depthWriteEnable = VK_FALSE;
+    pipelineOptions.cullMode = VK_CULL_MODE_NONE;
+    pipelineOptions.depthStencil.depthTestEnable = VK_TRUE;
+    pipelineOptions.depthStencil.depthWriteEnable = VK_TRUE;
     pipelineOptions.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     pipelineOptions.dynamicStateCreateInfo = &dynamicStateInfo;
 

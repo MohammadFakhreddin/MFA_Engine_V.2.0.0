@@ -6,7 +6,7 @@
 #include <cstring>
 #include <memory>
 
-namespace MFA
+namespace mfa
 {
 
     class BaseBlob

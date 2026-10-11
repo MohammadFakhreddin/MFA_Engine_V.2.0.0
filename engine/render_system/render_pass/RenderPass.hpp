@@ -5,7 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace MFA {
+namespace mfa {
 
     // Render pass has fixed resources. Change in resource causes change in frame-buffer
     class RenderPass {

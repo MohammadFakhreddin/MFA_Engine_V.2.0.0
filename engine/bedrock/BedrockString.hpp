@@ -39,7 +39,7 @@
     variable.append(charBufer, strLength);          \
 }                                                   \
 
-namespace MFA::String
+namespace mfa::String
 {
     // https://en.cppreference.com/w/cpp/string/byte/tolower
     [[nodiscard]]

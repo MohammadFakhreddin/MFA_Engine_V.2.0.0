@@ -6,7 +6,7 @@
 #include <string>
 #include <vulkan/vulkan_core.h>
 
-namespace MFA::Asset
+namespace mfa::Asset
 {
     class Shader final
     {
@@ -36,7 +36,7 @@ namespace MFA::Asset
     };
 };
 
-namespace MFA
+namespace mfa
 {
     namespace AS = Asset;
 };

@@ -3,7 +3,7 @@
 #include "BedrockAssert.hpp"
 #include "BedrockMath.hpp"
 
-namespace MFA::Asset::GLTF
+namespace mfa::Asset::GLTF
 {
 
     //-------------------------------------------------------------------------------------------------

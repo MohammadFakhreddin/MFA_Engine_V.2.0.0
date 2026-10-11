@@ -3,7 +3,7 @@
 #include "BedrockMath.hpp"
 #include "imgui.h"
 
-namespace MFA
+namespace mfa
 {
     
 	//-------------------------------------------------------------------------------------------------

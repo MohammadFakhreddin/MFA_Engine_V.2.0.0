@@ -7,7 +7,7 @@
 // Use Offscreen rendering:
 // https://github.com/SaschaWillems/Vulkan/blob/master/examples/offscreen/offscreen.cpp#L348
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 // We need a renderResource per frame

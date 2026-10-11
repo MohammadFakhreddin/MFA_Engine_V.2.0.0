@@ -17,7 +17,7 @@
 
 #include <ranges>
 
-using namespace MFA;
+using namespace mfa;
 
 namespace std
 {

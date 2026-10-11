@@ -30,7 +30,7 @@
 #include <memory>
 #include <vector>
 
-using namespace MFA;
+using namespace mfa;
 
 namespace
 {
@@ -176,7 +176,7 @@ void BoidsSimulationApp::PrepareUI()
 
 void BoidsSimulationApp::PrepareCamera()
 {
-    _camera = std::make_unique<MFA::ArcballCamera>([this]() -> VkExtent2D { return _sceneWindowSize; },
+    _camera = std::make_unique<mfa::ArcballCamera>([this]() -> VkExtent2D { return _sceneWindowSize; },
                                                     [this]() -> bool { return _sceneWindowFocused; }, glm::vec3{}, -Math::UpVec3);
 
     
@@ -857,7 +857,7 @@ void BoidsSimulationApp::UpdateCamera(float deltaTime)
     _camera->Update(deltaTime);
     if (_camera->IsDirty())
     {
-        MFA::BlinnPhongPipeline::Camera cameraData{.viewProjection = _camera->ViewProjection(),
+        mfa::BlinnPhongPipeline::Camera cameraData{.viewProjection = _camera->ViewProjection(),
                                                    .position = _camera->GlobalPosition()};
         _cameraBufferTracker->SetData(Alias{cameraData});
     }
@@ -945,7 +945,7 @@ void BoidsSimulationApp::Update(float deltaTime)
 }
 
 //======================================================================================================================
-void BoidsSimulationApp::Render(MFA::RT::CommandRecordState &recordState)
+void BoidsSimulationApp::Render(mfa::RT::CommandRecordState &recordState)
 {
     // TODO: Start from here. Fix the issues about soft collision. Fishes are passing through toruses.
     LogicalDevice::BeginCommandBuffer(recordState, RT::CommandBufferType::Compute);

@@ -4,7 +4,7 @@
 
 #include <atomic>
 
-namespace MFA {
+namespace mfa {
 
     bool TryLock(std::atomic<bool>& lock);
 
@@ -29,4 +29,4 @@ namespace MFA {
 
 }
 
-#define MFA_SCOPE_LOCK(lock)        MFA::ScopeLock MFA_UNIQUE_NAME(__scopeLock) {lock};
+#define MFA_SCOPE_LOCK(lock)        mfa::ScopeLock MFA_UNIQUE_NAME(__scopeLock) {lock};

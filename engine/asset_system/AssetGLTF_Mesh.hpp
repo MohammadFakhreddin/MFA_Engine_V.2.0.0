@@ -12,7 +12,7 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
 
-namespace MFA::Asset::GLTF
+namespace mfa::Asset::GLTF
 {
 
 	enum class AlphaMode : uint8_t
@@ -317,7 +317,7 @@ namespace MFA::Asset::GLTF
 
 }
 
-namespace MFA
+namespace mfa
 {
 	namespace AS = Asset;
 }

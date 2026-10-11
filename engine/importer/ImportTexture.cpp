@@ -16,7 +16,7 @@
 // #include "vulkan/vulkan_core.h"
 // #include "ktxvulkan.h"
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
 
     using Format = AS::Texture::Format;
@@ -404,4 +404,4 @@ namespace MFA::Importer
 
     //-------------------------------------------------------------------------------------------------
 
-} // namespace MFA::Importer
+} // namespace mfa::Importer

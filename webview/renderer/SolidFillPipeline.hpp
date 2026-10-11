@@ -6,7 +6,7 @@
 
 #include <glm/glm.hpp>
 
-namespace MFA
+namespace mfa
 {
     class SolidFillPipeline : public IShadingPipeline
     {

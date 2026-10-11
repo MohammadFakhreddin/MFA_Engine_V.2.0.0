@@ -10,7 +10,7 @@
 
 #define USE_VALIDATION_LAYERS
 
-namespace MFA
+namespace mfa
 {
 
     static VkBool32 VKAPI_PTR DebugCallback(

@@ -5,7 +5,7 @@
 
 #include <queue>
 
-namespace MFA {
+namespace mfa {
 
 template <typename T>
 class ThreadSafeQueue {

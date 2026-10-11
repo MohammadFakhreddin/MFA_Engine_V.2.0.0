@@ -5,7 +5,7 @@
 
 #include <glm/glm.hpp>
 
-namespace MFA
+namespace mfa
 {
     class TextOverlayPipeline : public IShadingPipeline
     {

@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-class BoidsUpdateFishPipeline : public MFA::IShadingPipeline
+class BoidsUpdateFishPipeline : public mfa::IShadingPipeline
 {
 public:
 
@@ -30,50 +30,50 @@ public:
     ~BoidsUpdateFishPipeline();
 
     [[nodiscard]]
-    bool IsBinded(MFA::RT::CommandRecordState const & recordState) const;
+    bool IsBinded(mfa::RT::CommandRecordState const & recordState) const;
 
-    void BindPipeline(MFA::RT::CommandRecordState & recordState) const;
+    void BindPipeline(mfa::RT::CommandRecordState & recordState) const;
 
     void BindFishes(
-        MFA::RT::CommandRecordState const & recordState,
-        MFA::RT::DescriptorSetGroup const & fishesDescriptorSets
+        mfa::RT::CommandRecordState const & recordState,
+        mfa::RT::DescriptorSetGroup const & fishesDescriptorSets
     ) const;
 
     void BindCollisionTriangles(
-        MFA::RT::CommandRecordState const & recordState,
-        MFA::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSets
+        mfa::RT::CommandRecordState const & recordState,
+        mfa::RT::DescriptorSetGroup const & collisionTrianglesDescriptorSets
     ) const;
 
     void BindSimulationConstants(
-        MFA::RT::CommandRecordState const & recordState,
-        MFA::RT::DescriptorSetGroup const & simulationConstantsDescriptorSets
+        mfa::RT::CommandRecordState const & recordState,
+        mfa::RT::DescriptorSetGroup const & simulationConstantsDescriptorSets
     ) const;
 
     void SetPushConstants(
-        MFA::RT::CommandRecordState & recordState,
+        mfa::RT::CommandRecordState & recordState,
         PushConstants const & pushConstants
     ) const;
 
     [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateFishDescriptorSets(
-        MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
-        MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
+    mfa::RT::DescriptorSetGroup CreateFishDescriptorSets(
+        mfa::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+        mfa::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
     ) const;
 
     void UpdateFishDescriptorSets(
-        MFA::RT::DescriptorSetGroup & descriptorSetGroup,
-        MFA::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
-        MFA::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
+        mfa::RT::DescriptorSetGroup & descriptorSetGroup,
+        mfa::RT::BufferGroup const & stateBuffer,                           // Stores the boids state
+        mfa::RT::BufferGroup const & instanceBuffer                         // Stores the final transform used for rendering
     ) const;
 
     [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateCollisionTrianglesDescriptorSets(
-        MFA::RT::BufferGroup const & collisionTriangleBuffer                // Collision triangle buffer
+    mfa::RT::DescriptorSetGroup CreateCollisionTrianglesDescriptorSets(
+        mfa::RT::BufferGroup const & collisionTriangleBuffer                // Collision triangle buffer
     );
 
     [[nodiscard]]
-    MFA::RT::DescriptorSetGroup CreateSimulationConstantsDescriptorSets(
-        MFA::RT::BufferGroup const & simulationConstantsBuffer              // Simulation constants buffer
+    mfa::RT::DescriptorSetGroup CreateSimulationConstantsDescriptorSets(
+        mfa::RT::BufferGroup const & simulationConstantsBuffer              // Simulation constants buffer
     );
 
     void Reload() override;
@@ -84,13 +84,13 @@ private:
 
     void CreatePipeline();
 
-    std::shared_ptr<MFA::RT::DescriptorPool> mDescriptorPool{};
+    std::shared_ptr<mfa::RT::DescriptorPool> mDescriptorPool{};
 
-    std::shared_ptr<MFA::RT::DescriptorSetLayoutGroup> mFishDescriptorSetLayout{};
-    std::shared_ptr<MFA::RT::DescriptorSetLayoutGroup> mCollisionTriangleDescriptorSetLayout{};
-    std::shared_ptr<MFA::RT::DescriptorSetLayoutGroup> mSimulationConstantsDescriptorSetLayout{};
+    std::shared_ptr<mfa::RT::DescriptorSetLayoutGroup> mFishDescriptorSetLayout{};
+    std::shared_ptr<mfa::RT::DescriptorSetLayoutGroup> mCollisionTriangleDescriptorSetLayout{};
+    std::shared_ptr<mfa::RT::DescriptorSetLayoutGroup> mSimulationConstantsDescriptorSetLayout{};
 
-    std::shared_ptr<MFA::RT::PipelineGroup> mPipeline{};
+    std::shared_ptr<mfa::RT::PipelineGroup> mPipeline{};
 
     Params mParams{};
 };

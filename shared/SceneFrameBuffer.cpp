@@ -2,7 +2,7 @@
 
 #include "LogicalDevice.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 
@@ -16,7 +16,7 @@ SceneFrameBuffer::SceneFrameBuffer(std::shared_ptr<SceneRenderResource> renderRe
         .height = extent.height
     };
 
-    _frameBufferList.resize(MFA::LogicalDevice::GetSwapChainImageCount());
+    _frameBufferList.resize(mfa::LogicalDevice::GetSwapChainImageCount());
 
     for (int imageIndex = 0; imageIndex < _frameBufferList.size(); imageIndex++)
     {
@@ -32,7 +32,7 @@ SceneFrameBuffer::SceneFrameBuffer(std::shared_ptr<SceneRenderResource> renderRe
         // We only need one framebuffer
         _frameBufferList[imageIndex] = std::make_unique<RT::FrameBuffer>(
             RB::CreateFrameBuffers(
-                MFA::LogicalDevice::GetVkDevice(),
+                mfa::LogicalDevice::GetVkDevice(),
                 renderPass,
                 attachments.data(),
                 static_cast<uint32_t>(attachments.size()),

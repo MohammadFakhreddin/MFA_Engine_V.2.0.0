@@ -8,6 +8,11 @@ These rules apply to the entire repository.
 - Do not edit generated build output or third-party code in `submodules/` unless the task explicitly requires it.
 - Do not commit generated shader binaries, build artifacts, or IDE output unless they are already intentionally tracked and the task requires updating them.
 
+## Stay within the requested scope
+
+- Change only the files and behavior needed for the user's explicit request.
+- Do not modify adjacent shader stages or rendering behavior without explicit user approval. If such a change appears necessary, explain why and ask first.
+
 ## Examples and visual tests
 
 - Rendering demonstrations and manual visual tests belong in `executables/<example_name>/`.

@@ -16,12 +16,21 @@ namespace ShapeGenerator
     using TexturedMesh = std::tuple<Vertices, Indices, Normals, TextureCoordinates>;
 
     [[nodiscard]]
+    TexturedMesh Plane(float width, float height, int widthSegments, int heightSegments);
+
+    void PlaneNoAlloc(float width, float height, int widthSegments, int heightSegments, Vertices &vertices,
+                      Indices &indices, Normals &normals, TextureCoordinates &textureCoordinates);
+
+    [[nodiscard]]
     Mesh Cylinder(float radius, float height, int segments);
 
     [[nodiscard]]
     TexturedMesh Sphere(float radius, int subdivisions);
 
+    void SphereNoAlloc(float radius, int subdivisions, Vertices &positions, Indices &indices, Normals &normals,
+                       TextureCoordinates &textureCoordinates);
+
     [[nodiscard]]
     Mesh Quad();
 
-};
+}; // namespace ShapeGenerator

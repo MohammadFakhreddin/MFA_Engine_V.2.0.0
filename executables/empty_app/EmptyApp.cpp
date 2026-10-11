@@ -9,7 +9,7 @@
 
 #include <filesystem>
 
-using namespace MFA;
+using namespace mfa;
 
 //======================================================================================================================
 
@@ -117,7 +117,7 @@ void EmptyApp::Update(float deltaTime)
 
 //======================================================================================================================
 
-void EmptyApp::Render(MFA::RT::CommandRecordState &recordState)
+void EmptyApp::Render(mfa::RT::CommandRecordState &recordState)
 {
     // device->BeginCommandBuffer(
     //     recordState,

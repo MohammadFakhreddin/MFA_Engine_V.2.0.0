@@ -2,12 +2,12 @@
 
 //----------------------------------------------------------------------------------------------------------------------
 
-std::shared_ptr<MFA::JobSystem> MFA::JobSystem::Instantiate()
+std::shared_ptr<mfa::JobSystem> mfa::JobSystem::Instantiate()
 {
-    std::shared_ptr<MFA::JobSystem> shared_ptr = _instance.lock();
+    std::shared_ptr<mfa::JobSystem> shared_ptr = _instance.lock();
     if (shared_ptr == nullptr)
     {
-        shared_ptr = std::make_shared<MFA::JobSystem>();
+        shared_ptr = std::make_shared<mfa::JobSystem>();
         _instance = shared_ptr;
     }
     return shared_ptr;
@@ -15,18 +15,18 @@ std::shared_ptr<MFA::JobSystem> MFA::JobSystem::Instantiate()
 
 //----------------------------------------------------------------------------------------------------------------------
 
-void MFA::JobSystem::Destroy()
+void mfa::JobSystem::Destroy()
 {
     _instance.reset();
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
-bool MFA::JobSystem::HasInstance() { return !_instance.expired(); }
+bool mfa::JobSystem::HasInstance() { return !_instance.expired(); }
 
 //----------------------------------------------------------------------------------------------------------------------
 
-MFA::JobSystem::JobSystem() = default;
-MFA::JobSystem::~JobSystem() = default;
+mfa::JobSystem::JobSystem() = default;
+mfa::JobSystem::~JobSystem() = default;
 
 //----------------------------------------------------------------------------------------------------------------------

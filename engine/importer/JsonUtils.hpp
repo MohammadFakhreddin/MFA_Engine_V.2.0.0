@@ -2,7 +2,7 @@
 
 #include "json.hpp"
 
-namespace MFA::JsonUtils
+namespace mfa::JsonUtils
 {
     template<typename T>
     static T TryGetValue(
@@ -21,7 +21,7 @@ namespace MFA::JsonUtils
     }
 }
 
-namespace MFA
+namespace mfa
 {
     namespace JU = JsonUtils;
 }

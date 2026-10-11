@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace MFA {
+namespace mfa {
 
     class DescriptorSetSchema {
     public:

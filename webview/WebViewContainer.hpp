@@ -8,7 +8,7 @@
 
 #include <glm/glm.hpp>
 
-namespace MFA
+namespace mfa
 {
     struct LocalBufferTracker;
     class Blob;
@@ -24,13 +24,13 @@ class WebViewContainer : public litehtml::document_container
 
 public:
 
-	using FontRenderer = MFA::CustomFontRenderer;
-	using SolidFillRenderer = MFA::SolidFillRenderer;
-    using ImageRenderer = MFA::ImageRenderer;
-    using BorderRenderer = MFA::BorderRenderer;
-    using RequestBlob = std::function<std::shared_ptr<MFA::Blob>(char const * address, bool force)>;
+	using FontRenderer = mfa::CustomFontRenderer;
+	using SolidFillRenderer = mfa::SolidFillRenderer;
+    using ImageRenderer = mfa::ImageRenderer;
+    using BorderRenderer = mfa::BorderRenderer;
+    using RequestBlob = std::function<std::shared_ptr<mfa::Blob>(char const * address, bool force)>;
     using RequestFont = std::function<std::shared_ptr<FontRenderer>(char const * font)>;
-    using RequestImage = std::function<std::tuple<std::shared_ptr<MFA::RT::GpuTexture>, glm::vec2>(char const * path)>;
+    using RequestImage = std::function<std::tuple<std::shared_ptr<mfa::RT::GpuTexture>, glm::vec2>(char const * path)>;
 
     struct Params
     {
@@ -53,9 +53,9 @@ public:
 
 	void Update();
 
-    void UpdateBuffer(MFA::RT::CommandRecordState& recordState);
+    void UpdateBuffer(mfa::RT::CommandRecordState& recordState);
 
-	void DisplayPass(MFA::RT::CommandRecordState& recordState);
+	void DisplayPass(mfa::RT::CommandRecordState& recordState);
 
     [[nodiscard]]
     GumboNode * GetElementById(const char *id);
@@ -208,7 +208,7 @@ private:
     RequestImage _requestImage{};
 
     std::string _parentAddress{};
-    std::shared_ptr<MFA::Blob> _htmlBlob{};
+    std::shared_ptr<mfa::Blob> _htmlBlob{};
 
 	litehtml::position _clip {};
 
@@ -237,12 +237,12 @@ private:
 
     struct State
     {
-        std::vector<std::function<void(MFA::RT::CommandRecordState &)>> drawCalls{};
-        std::vector<std::function<void(MFA::RT::CommandRecordState &)>> bufferCalls{};
+        std::vector<std::function<void(mfa::RT::CommandRecordState &)>> drawCalls{};
+        std::vector<std::function<void(mfa::RT::CommandRecordState &)>> bufferCalls{};
         StateMap<FontRenderer::TextData> textMap{};
         StateMap<ImageRenderer::ImageData> imageMap{};
-        StateMap<MFA::LocalBufferTracker> solidMap{};
-        StateMap<MFA::LocalBufferTracker> borderMap{};
+        StateMap<mfa::LocalBufferTracker> solidMap{};
+        StateMap<mfa::LocalBufferTracker> borderMap{};
         int lifeTime{};
     };
     std::vector<State> _states{};

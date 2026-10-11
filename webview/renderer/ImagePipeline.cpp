@@ -5,7 +5,7 @@
 #include "ImportShader.hpp"
 #include "LogicalDevice.hpp"
 
-using namespace MFA;
+using namespace mfa;
 
 //-------------------------------------------------------------------------------------------------
 

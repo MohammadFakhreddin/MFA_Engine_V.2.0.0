@@ -3,7 +3,7 @@
 layout(location = 0) in vec3 inWorldPosition;
 layout(location = 1) in vec2 inUV;
 layout(location = 2) in vec3 inWorldNormal;
-layout(location = 3) in float inVertexIndex;
+layout(location = 3) flat in float inVertexIndex;
 layout(location = 4) flat in uint inInstanceIndex;
 
 layout(location = 0) out vec4 outColor;
@@ -43,32 +43,33 @@ void main()
 
     uint shellCount = uint(shell.count);
 
+    vec4 albedoColor = material.albedo;
+
+    vec3 rgbColor = albedoColor.rgb;
+
+    float alpha = albedoColor.a;
+
     // We skip this operation for shell 0
     if (shellIndex > 0)
     {
-        float shellFraction = float(shellIndex) / float(max(shellCount - 1, 1));
+        
+        float shellFraction = float(shellIndex) / float(max(shellCount, 1));
 
         vec2 uv = inUV * shell.density;
-        vec2 uvFrac = fract(uv) * 2.0 - 1.0;
-        if (length(uvFrac) > shell.radius * (rand01(inVertexIndex) - shellFraction))
+        
+        float uvIntX = uv.x - fract(uv.x);
+        float uvIntY = uv.y - fract(uv.y);
+
+        float seed = uvIntX + 100.0 * uvIntY + 100.0 * 10.0;
+        
+        if (shellFraction > rand01(seed))
         {
             discard;
         }
     }
 
-    vec4 color = material.albedo;
-
-    if (material.albedoTexture >= 0)
-    {
-        color *= texture(albedoTexture, inUV);
-    }
-
-    float heightAttenuation = (float(shellIndex + 1) / float(max(shellCount, 1)));
-
-    vec3 rgbColor = color.rgb;
-    float alpha = color.a;
-
     float nDotL = clamp(dot(normalize(light.direction), normalize(inWorldNormal)), 0.0, 1.0) * 0.5 + 0.5;
+    
     float halfLambert = nDotL * nDotL;
     
     float attenuation = float(shellIndex) / float(max(shellCount - 1, 1));

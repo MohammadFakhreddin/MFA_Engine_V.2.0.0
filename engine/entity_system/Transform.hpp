@@ -6,7 +6,7 @@
 #include <string>
 #include <set>
 
-namespace MFA
+namespace mfa
 {
     class Transform
     {

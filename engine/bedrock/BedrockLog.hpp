@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace MFA::Log {
+namespace mfa::Log {
 
     void Debug(char const * message, ...);
 
@@ -25,15 +25,15 @@ namespace MFA::Log {
 
     void _Error(char const * file, int line, char const * function, char const * message, ...);
 
-} // MFA::Log
+} // mfa::Log
 
 
 #ifdef MFA_DEBUG
-    #define MFA_LOG_DEBUG(fmt_, ...)                MFA::Log::_Debug(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
+    #define MFA_LOG_DEBUG(fmt_, ...)                mfa::Log::_Debug(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
 #else
     #define MFA_LOG_DEBUG(fmt_, ...)                         
 #endif
 
-#define MFA_LOG_INFO(fmt_, ...)                 MFA::Log::_Info(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
-#define MFA_LOG_WARN(fmt_, ...)                 MFA::Log::_Warn(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
-#define MFA_LOG_ERROR(fmt_, ...)                MFA::Log::_Error(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
+#define MFA_LOG_INFO(fmt_, ...)                 mfa::Log::_Info(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
+#define MFA_LOG_WARN(fmt_, ...)                 mfa::Log::_Warn(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)
+#define MFA_LOG_ERROR(fmt_, ...)                mfa::Log::_Error(__FILE__, __LINE__, __FUNCTION__, fmt_, ##__VA_ARGS__)

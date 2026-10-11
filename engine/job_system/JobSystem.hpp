@@ -4,7 +4,7 @@
 
 #include <future>
 
-namespace MFA
+namespace mfa
 {
     class JobSystem
     {
@@ -89,10 +89,10 @@ namespace MFA
         ThreadPool threadPool{std::max(std::min(MaxThreadCount, (int)(std::thread::hardware_concurrency() * 0.5f)), MinThreadCount)};
 
     };
-} // namespace MFA
+} // namespace mfa
 
 
-namespace MFA
+namespace mfa
 {
     using JS = JobSystem;
 }

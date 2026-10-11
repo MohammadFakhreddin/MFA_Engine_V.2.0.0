@@ -10,7 +10,7 @@
 #include "stb_image_write.h"
 #include "tiny_gltf_loader.h"
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
 
     struct TextureRef
@@ -1113,7 +1113,7 @@ namespace MFA::Importer
 
 	//-------------------------------------------------------------------------------------------------
 
-    std::unique_ptr<MFA::Importer::Model> GLTF_Model(std::string const& path)
+    std::unique_ptr<mfa::Importer::Model> GLTF_Model(std::string const& path)
     {
         std::unique_ptr<Model> model = nullptr;
         if (MFA_VERIFY(path.empty() == false))

@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <array>
 
-using namespace MFA;
+using namespace mfa;
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -389,7 +389,7 @@ RT::DescriptorSetGroup BlinnPhongPipeline::CreateMaterialDescriptorSets(
 
 //----------------------------------------------------------------------------------------------------------------------
 
-void BlinnPhongPipeline::BindCameraDescriptorSet(const MFA::RT::CommandRecordState &recordState,
+void BlinnPhongPipeline::BindCameraDescriptorSet(const mfa::RT::CommandRecordState &recordState,
                                                          RT::DescriptorSetGroup const &descriptorSet) const
 {
     RB::AutoBindDescriptorSet(recordState, (RB::UpdateFrequency)0, descriptorSet);

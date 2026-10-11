@@ -3,7 +3,7 @@
 #include "RenderTypes.hpp"
 #include "BedrockMemory.hpp"
 
-namespace MFA
+namespace mfa
 {
     struct HostVisibleBufferTracker
     {

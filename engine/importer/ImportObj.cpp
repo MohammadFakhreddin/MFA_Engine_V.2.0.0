@@ -7,7 +7,7 @@
 #include "tiny_gltf_loader/tiny_gltf_loader.h"
 #include "tiny_obj_loader/tiny_obj_loader.h"
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
     bool LoadObj(std::string const& path, ObjModel& outModel)
     {

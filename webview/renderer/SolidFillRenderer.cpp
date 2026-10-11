@@ -4,14 +4,14 @@
 
 //------------------------------------------------------------------
 
-MFA::SolidFillRenderer::SolidFillRenderer(std::shared_ptr<SolidFillPipeline> pipeline)
+mfa::SolidFillRenderer::SolidFillRenderer(std::shared_ptr<SolidFillPipeline> pipeline)
 	: _pipeline(std::move(pipeline))
 {
 }
 
 //------------------------------------------------------------------
 
-std::unique_ptr<MFA::LocalBufferTracker> MFA::SolidFillRenderer::AllocateBuffer(
+std::unique_ptr<mfa::LocalBufferTracker> mfa::SolidFillRenderer::AllocateBuffer(
 	Position const& topLeftPos,
 	Position const& bottomLeftPos,
 	Position const& topRightPos,
@@ -73,7 +73,7 @@ std::unique_ptr<MFA::LocalBufferTracker> MFA::SolidFillRenderer::AllocateBuffer(
 
 //------------------------------------------------------------------
 
-void MFA::SolidFillRenderer::UpdateBuffer(
+void mfa::SolidFillRenderer::UpdateBuffer(
     LocalBufferTracker &bufferTracker,
     Position const &topLeftPos,
     Position const &bottomLeftPos,
@@ -112,7 +112,7 @@ void MFA::SolidFillRenderer::UpdateBuffer(
 
 //------------------------------------------------------------------
 
-void MFA::SolidFillRenderer::Draw(
+void mfa::SolidFillRenderer::Draw(
     RT::CommandRecordState& recordState,
     Pipeline::PushConstants const & pushConstants,
     LocalBufferTracker const& vertexBuffer

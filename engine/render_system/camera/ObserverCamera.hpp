@@ -1,7 +1,7 @@
 #pragma once
 #include "PerspectiveCamera.hpp"
 
-namespace MFA
+namespace mfa
 {
     class ObserverCamera : public PerspectiveCamera
     {

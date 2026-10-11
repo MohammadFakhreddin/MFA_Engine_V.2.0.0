@@ -3,7 +3,7 @@
 #include "BedrockMath.hpp"
 #include "BedrockMemory.hpp"
 
-namespace MFA
+namespace mfa
 {
 
     //-------------------------------------------------------------------------------------------------

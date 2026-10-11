@@ -1,5 +1,7 @@
 #include "ShapeGenerator.hpp"
 
+#include "BedrockAssert.hpp"
+
 #include <ext/scalar_constants.hpp>
 
 #include <algorithm>
@@ -19,10 +21,82 @@ namespace
         uint32_t const upper = std::max(first, second);
         return (static_cast<uint64_t>(lower) << 32U) | static_cast<uint64_t>(upper);
     }
-}
+} // namespace
 
 namespace ShapeGenerator
 {
+
+    //======================================================================================================================
+
+    TexturedMesh Plane(float width, float height, int widthSegments, int heightSegments)
+    {
+        MFA_ASSERT(widthSegments > 0);
+        MFA_ASSERT(heightSegments > 0);
+        MFA_ASSERT(width > 0.0f);
+        MFA_ASSERT(height > 0.0f);
+
+        TexturedMesh mesh;
+        auto &[vertices, indices, normals, textureCoordinates] = mesh;
+
+        PlaneNoAlloc(width, height, widthSegments, heightSegments, vertices, indices, normals, textureCoordinates);
+
+        return mesh;
+    }
+
+    //======================================================================================================================
+
+    void PlaneNoAlloc(float width, float height, int widthSegments, int heightSegments, Vertices &vertices,
+                      Indices &indices, Normals &normals, TextureCoordinates &textureCoordinates)
+    {
+        MFA_ASSERT(widthSegments > 0);
+        MFA_ASSERT(heightSegments > 0);
+        MFA_ASSERT(width > 0.0f);
+        MFA_ASSERT(height > 0.0f);
+
+        auto const vertexOffset = vertices.size();
+
+        float halfWidth = width / 2.0f;
+        float halfHeight = height / 2.0f;
+
+        glm::vec2 bottomLeft(-halfWidth, -halfHeight);
+        glm::vec2 topRight(halfWidth, halfHeight);
+
+        for (int y = 0; y <= heightSegments; ++y)
+        {
+            for (int x = 0; x <= widthSegments; ++x)
+            {
+                float u = static_cast<float>(x) / static_cast<float>(widthSegments);
+                float v = static_cast<float>(y) / static_cast<float>(heightSegments);
+
+                float vX = glm::mix(bottomLeft.x, topRight.x, u);
+                float vY = glm::mix(bottomLeft.y, topRight.y, v);
+
+                vertices.emplace_back(vX, 0.0f, vY);
+                normals.emplace_back(0.0f, -1.0f, 0.0f);
+                textureCoordinates.emplace_back(u, v);
+            }
+        }
+
+        for (int y = 0; y < heightSegments; ++y)
+        {
+            for (int x = 0; x < widthSegments; ++x)
+            {
+                int topLeft = y * (widthSegments + 1) + x + vertexOffset;
+                int topRight = topLeft + 1;
+                int bottomLeft = (y + 1) * (widthSegments + 1) + x + vertexOffset;
+                int bottomRight = bottomLeft + 1;
+
+                indices.emplace_back(bottomLeft);
+                indices.emplace_back(topLeft);
+                indices.emplace_back(topRight);
+
+                indices.emplace_back(bottomLeft);
+                indices.emplace_back(topRight);
+                indices.emplace_back(bottomRight);
+            }
+        }
+    }
+
     //======================================================================================================================
 
     Mesh Cylinder(float const radius, float const height, int const segments)
@@ -35,7 +109,8 @@ namespace ShapeGenerator
         float angleStep = 2.0f * glm::pi<float>() / (float)segments;
 
         // Generate vertices and normals
-        for (int i = 0; i < segments; ++i) {
+        for (int i = 0; i < segments; ++i)
+        {
             float angle = i * angleStep;
             float x = radius * cos(angle);
             float z = radius * sin(angle);
@@ -60,7 +135,8 @@ namespace ShapeGenerator
         int topCenterIndex = segments * 2 + 1;
 
         // Generate indices for the side faces
-        for (int i = 0; i < segments; ++i) {
+        for (int i = 0; i < segments; ++i)
+        {
             int next = (i + 1) % segments;
 
             // Side face
@@ -74,7 +150,8 @@ namespace ShapeGenerator
         }
 
         // Generate indices for the bottom face
-        for (int i = 0; i < segments; ++i) {
+        for (int i = 0; i < segments; ++i)
+        {
             int next = (i + 1) % segments;
 
             indices.emplace_back(bottomCenterIndex);
@@ -83,7 +160,8 @@ namespace ShapeGenerator
         }
 
         // Generate indices for the top face
-        for (int i = 0; i < segments; ++i) {
+        for (int i = 0; i < segments; ++i)
+        {
             int next = (i + 1) % segments;
 
             indices.emplace_back(topCenterIndex);
@@ -98,23 +176,29 @@ namespace ShapeGenerator
 
     TexturedMesh Sphere(float const radius, int const subdivisions)
     {
+        auto mesh = TexturedMesh{};
+        auto &[positions, indices, normals, textureCoordinates] = mesh;
+
+        SphereNoAlloc(radius, subdivisions, positions, indices, normals, textureCoordinates);
+
+        return mesh;
+    }
+
+
+    //======================================================================================================================
+
+    void SphereNoAlloc(float radius, int subdivisions, Vertices &positions, Indices &indices, Normals &normals,
+                       TextureCoordinates &textureCoordinates)
+    {
         constexpr float goldenRatio = 1.6180339887498948482f;
         constexpr int maxSubdivisionCount = 5;
         int const subdivisionCount = std::clamp(subdivisions, 0, maxSubdivisionCount);
 
         Vertices unitDirections{
-            {-1.0f, goldenRatio, 0.0f},
-            {1.0f, goldenRatio, 0.0f},
-            {-1.0f, -goldenRatio, 0.0f},
-            {1.0f, -goldenRatio, 0.0f},
-            {0.0f, -1.0f, goldenRatio},
-            {0.0f, 1.0f, goldenRatio},
-            {0.0f, -1.0f, -goldenRatio},
-            {0.0f, 1.0f, -goldenRatio},
-            {goldenRatio, 0.0f, -1.0f},
-            {goldenRatio, 0.0f, 1.0f},
-            {-goldenRatio, 0.0f, -1.0f},
-            {-goldenRatio, 0.0f, 1.0f},
+            {-1.0f, goldenRatio, 0.0f},  {1.0f, goldenRatio, 0.0f},   {-1.0f, -goldenRatio, 0.0f},
+            {1.0f, -goldenRatio, 0.0f},  {0.0f, -1.0f, goldenRatio},  {0.0f, 1.0f, goldenRatio},
+            {0.0f, -1.0f, -goldenRatio}, {0.0f, 1.0f, -goldenRatio},  {goldenRatio, 0.0f, -1.0f},
+            {goldenRatio, 0.0f, 1.0f},   {-goldenRatio, 0.0f, -1.0f}, {-goldenRatio, 0.0f, 1.0f},
         };
         for (auto &direction : unitDirections)
         {
@@ -123,10 +207,9 @@ namespace ShapeGenerator
 
         // Clockwise winding when viewed from outside, matching the renderer's front-face convention.
         std::vector<Triangle> triangles{
-            {0, 5, 11}, {0, 1, 5}, {0, 7, 1}, {0, 10, 7}, {0, 11, 10},
-            {1, 9, 5}, {5, 4, 11}, {11, 2, 10}, {10, 6, 7}, {7, 8, 1},
-            {3, 4, 9}, {3, 2, 4}, {3, 6, 2}, {3, 8, 6}, {3, 9, 8},
-            {4, 5, 9}, {2, 11, 4}, {6, 10, 2}, {8, 7, 6}, {9, 1, 8},
+            {0, 5, 11},  {0, 1, 5},  {0, 7, 1},  {0, 10, 7}, {0, 11, 10}, {1, 9, 5}, {5, 4, 11},
+            {11, 2, 10}, {10, 6, 7}, {7, 8, 1},  {3, 4, 9},  {3, 2, 4},   {3, 6, 2}, {3, 8, 6},
+            {3, 9, 8},   {4, 5, 9},  {2, 11, 4}, {6, 10, 2}, {8, 7, 6},   {9, 1, 8},
         };
 
         for (int subdivision = 0; subdivision < subdivisionCount; ++subdivision)
@@ -134,10 +217,8 @@ namespace ShapeGenerator
             std::unordered_map<uint64_t, uint32_t> midpointIndices{};
             midpointIndices.reserve(triangles.size() * 3 / 2);
 
-            auto const midpointIndex = [&unitDirections, &midpointIndices](
-                uint32_t const first,
-                uint32_t const second
-            ) -> uint32_t
+            auto const midpointIndex = [&unitDirections, &midpointIndices](uint32_t const first,
+                                                                           uint32_t const second) -> uint32_t
             {
                 uint64_t const key = EdgeKey(first, second);
                 if (auto const iterator = midpointIndices.find(key); iterator != midpointIndices.end())
@@ -178,23 +259,17 @@ namespace ShapeGenerator
             return {u, v};
         };
 
-        Vertices positions{};
-        Normals normals{};
-        TextureCoordinates textureCoordinates{};
-        Indices indices{};
-        positions.reserve(unitDirections.size());
-        normals.reserve(unitDirections.size());
-        textureCoordinates.reserve(unitDirections.size());
-        indices.reserve(triangles.size() * 3);
+        positions.reserve(positions.size() + unitDirections.size());
+        normals.reserve(normals.size() + unitDirections.size());
+        textureCoordinates.reserve(textureCoordinates.size() + unitDirections.size());
+        indices.reserve(indices.size() + triangles.size() * 3);
 
         // A source vertex normally has one final vertex, plus an optional copy on the wrapped side of the UV seam.
         std::unordered_map<uint64_t, uint32_t> vertexVariants{};
         vertexVariants.reserve(unitDirections.size());
 
-        auto const appendVertex = [&positions, &normals, &textureCoordinates, &unitDirections, radius](
-            uint32_t const sourceIndex,
-            glm::vec2 const uv
-        ) -> uint32_t
+        auto const appendVertex = [&positions, &normals, &textureCoordinates, &unitDirections,
+                                   radius](uint32_t const sourceIndex, glm::vec2 const uv) -> uint32_t
         {
             auto const index = static_cast<uint32_t>(positions.size());
             glm::vec3 const normal = unitDirections[sourceIndex];
@@ -247,8 +322,7 @@ namespace ShapeGenerator
                 {
                     size_t const nextCorner = (poleCorner + 1) % triangle.size();
                     size_t const previousCorner = (poleCorner + 2) % triangle.size();
-                    triangleUVs[poleCorner].x =
-                        (triangleUVs[nextCorner].x + triangleUVs[previousCorner].x) * 0.5f;
+                    triangleUVs[poleCorner].x = (triangleUVs[nextCorner].x + triangleUVs[previousCorner].x) * 0.5f;
                 }
             }
 
@@ -262,8 +336,7 @@ namespace ShapeGenerator
                 }
 
                 bool const wrapped = triangleUVs[corner].x >= 1.0f;
-                uint64_t const variantKey =
-                    (static_cast<uint64_t>(sourceIndex) << 1U) | static_cast<uint64_t>(wrapped);
+                uint64_t const variantKey = (static_cast<uint64_t>(sourceIndex) << 1U) | static_cast<uint64_t>(wrapped);
                 if (auto const iterator = vertexVariants.find(variantKey); iterator != vertexVariants.end())
                 {
                     indices.emplace_back(iterator->second);
@@ -275,13 +348,6 @@ namespace ShapeGenerator
                 indices.emplace_back(index);
             }
         }
-
-        return std::make_tuple(
-            std::move(positions),
-            std::move(indices),
-            std::move(normals),
-            std::move(textureCoordinates)
-        );
     }
 
     //======================================================================================================================
@@ -313,4 +379,5 @@ namespace ShapeGenerator
     }
 
     //======================================================================================================================
-}
+
+} // namespace ShapeGenerator

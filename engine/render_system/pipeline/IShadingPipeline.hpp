@@ -1,6 +1,6 @@
 #pragma once
 
-namespace MFA {
+namespace mfa {
 class IShadingPipeline {
 public:
     virtual void Reload() = 0;

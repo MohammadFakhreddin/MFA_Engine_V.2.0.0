@@ -7,7 +7,7 @@
 #include <functional>
 #include <vulkan/vulkan.h>
 
-namespace MFA
+namespace mfa
 {
 	// TODO: Camera can use transform class
 	class PerspectiveCamera

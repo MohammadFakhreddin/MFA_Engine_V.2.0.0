@@ -5,7 +5,7 @@
 
 #include <optional>
 
-namespace MFA
+namespace mfa
 {
     class ImageRenderer
     {

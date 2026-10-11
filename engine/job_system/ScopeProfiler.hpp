@@ -6,7 +6,7 @@
 
 #include <atomic>
 
-namespace MFA {
+namespace mfa {
     class ScopeProfiler
     {
     public:
@@ -25,4 +25,4 @@ namespace MFA {
     };
 }
 
-#define MFA_SCOPE_Profiler(lock)        MFA::ScopeProfiler MFA_UNIQUE_NAME(__scopeProfiler) {lock};
+#define MFA_SCOPE_Profiler(lock)        mfa::ScopeProfiler MFA_UNIQUE_NAME(__scopeProfiler) {lock};

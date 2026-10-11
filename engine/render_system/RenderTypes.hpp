@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.h>
 #include <string>
 
-namespace MFA
+namespace mfa
 {
 	class RenderPass;
 

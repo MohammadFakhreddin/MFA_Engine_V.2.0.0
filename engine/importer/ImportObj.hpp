@@ -5,7 +5,7 @@
 #include <vec3.hpp>
 #include <vector>
 
-namespace MFA::Importer
+namespace mfa::Importer
 {
 
     struct Vertex

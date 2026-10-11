@@ -3,7 +3,7 @@
 #include "BufferTracker.hpp"
 #include "BorderPipeline.hpp"
 
-namespace MFA
+namespace mfa
 {
     class BorderRenderer
     {

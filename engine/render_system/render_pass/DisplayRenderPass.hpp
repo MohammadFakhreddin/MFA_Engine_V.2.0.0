@@ -9,7 +9,7 @@
 
 #include <memory>
 
-namespace MFA
+namespace mfa
 {
 	class DisplayRenderPass final : public RenderPass
     {

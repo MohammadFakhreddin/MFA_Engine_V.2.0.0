@@ -10,7 +10,7 @@
 #include <set>
 #include <vector>
 
-namespace MFA::RenderBackend
+namespace mfa::RenderBackend
 {
 
     constexpr char EngineName[256] = "MFA";
