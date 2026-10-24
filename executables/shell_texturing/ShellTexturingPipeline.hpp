@@ -52,8 +52,8 @@ namespace mfa
         struct alignas(16) Light
         {
             glm::vec3 direction{1.0f, -1.0f, 1.0f};
-            float ambientStrength = 0.204f;
-            glm::vec3 color{226.0f / 255.0f, 244.0f / 255.0f, 109.0f / 255.0f};
+            float ambientStrength = 0.223f;
+            glm::vec3 color{1.0f, 1.0f, 1.0f};
             float heightAttenuation = 1.0f;
         };
 

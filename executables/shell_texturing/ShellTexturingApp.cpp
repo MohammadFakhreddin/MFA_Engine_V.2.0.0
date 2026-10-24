@@ -544,7 +544,7 @@ void ShellTexturingApp::DisplayParametersWindow()
 
         bool shellChanged = false;
         shellChanged |= ImGui::SliderFloat("Fur height", &shell.displacement, 0.001f, 0.8f, "%.3f");
-        shellChanged |= ImGui::SliderFloat("Hair radius", &shell.radius, 0.001f, 1.0f, "%.3f");
+        shellChanged |= ImGui::SliderFloat("Hair radius", &shell.radius, 0.01f, 10.0f, "%.3f");
         shellChanged |= ImGui::SliderInt("Shell count", &shell.count, 1, 512);
         shellChanged |= ImGui::SliderFloat("Shell height attenuation", &shell.attenuation, 0.1f, 5.0f, "%.2f");
         shellChanged |= ImGui::SliderInt("Shell density", &shell.density, 1, 1000);
@@ -562,13 +562,15 @@ void ShellTexturingApp::DisplayParametersWindow()
         }
     }
 
-    bool lightChanged = false;
-    lightChanged |= ImGui::DragFloat3("Light direction", &_light.direction.x, 0.01f, -1.0f, 1.0f);
-    lightChanged |= ImGui::ColorEdit3("Light color", &_light.color.x);
-    lightChanged |= ImGui::SliderFloat("Ambient strength", &_light.ambientStrength, 0.0f, 1.0f);
-    if (lightChanged)
     {
-        _lightBufferTracker->SetData(Alias{_light});
+        bool lightChanged = false;
+        lightChanged |= ImGui::DragFloat3("Light direction", &_light.direction.x, 0.01f, -1.0f, 1.0f);
+        lightChanged |= ImGui::ColorEdit3("Light color", &_light.color.x);
+        lightChanged |= ImGui::SliderFloat("Ambient strength", &_light.ambientStrength, 0.0f, 1.0f);
+        if (lightChanged)
+        {
+            _lightBufferTracker->SetData(Alias{_light});
+        }
     }
 
     if (ImGui::CollapsingHeader("Camera"))

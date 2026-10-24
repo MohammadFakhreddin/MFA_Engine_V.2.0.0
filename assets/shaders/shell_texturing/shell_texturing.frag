@@ -56,19 +56,26 @@ void main()
         float shellFraction = float(shellIndex) / float(max(shellCount, 1));
 
         vec2 uv = inUV * shell.density;
+
+        float uvFracX = fract(uv.x);
+        float uvFracY = fract(uv.y);
         
-        float uvIntX = uv.x - fract(uv.x);
-        float uvIntY = uv.y - fract(uv.y);
+        float uvIntX = uv.x - uvFracX;
+        float uvIntY = uv.y - uvFracY;
 
         float seed = uvIntX + 100.0 * uvIntY + 100.0 * 10.0;
+
+        uvFracX = uvFracX * 2.0 - 1.0;
+        uvFracY = uvFracY * 2.0 - 1.0;
         
-        if (shellFraction > rand01(seed))
+        float distance = length(vec2(uvFracX, uvFracY));
+        if (distance > shell.radius * (rand01(seed) - shellFraction))
         {
             discard;
         }
     }
 
-    float nDotL = clamp(dot(normalize(light.direction), normalize(inWorldNormal)), 0.0, 1.0) * 0.5 + 0.5;
+    float nDotL = dot(normalize(light.direction), normalize(inWorldNormal)) * 0.5 + 0.5;
     
     float halfLambert = nDotL * nDotL;
     

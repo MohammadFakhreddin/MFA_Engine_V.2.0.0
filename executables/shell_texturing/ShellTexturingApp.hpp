@@ -120,8 +120,8 @@ private:
     };
     std::array<MeshSettings, (int)SelectedMesh::Count> _meshSettings{
         {MeshSettings{
-             .shell = {.displacement = 0.276f, .radius = 0.154f, .count = 256, .attenuation = 1.60f, .density = 771},
-             .material = {.albedo = glm::vec4(239.f / 255.f, 237.f / 255.f, 196.f / 255.f, 1.0f), .albedoTexture = -1},
+             .shell = {.displacement = 0.416f, .radius = 6.818f, .count = 512, .attenuation = 0.79f, .density = 545},
+             .material = {.albedo = glm::vec4(79.f / 255.f, 138.f / 255.f, 209.f / 255.f, 1.0f), .albedoTexture = -1},
              .camera = [this]() -> mfa::ArcballCamera
              {
                  using namespace mfa;
@@ -135,7 +135,7 @@ private:
              }(),
              .model = {.model = glm::mat4(1.0f)}},
          MeshSettings{
-             .shell = {.displacement = 0.1f, .radius = 0.05f, .count = 32, .attenuation = 1.0f, .density = 221},
+             .shell = {.displacement = 0.156f, .radius = 3.065f, .count = 512, .attenuation = 0.99f, .density = 278},
              .material = {.albedo = glm::vec4(46.f / 255.f, 242.f / 255.f, 64.f / 255.f, 1.0f), .albedoTexture = -1},
              .camera = [this]() -> mfa::ArcballCamera
              {
